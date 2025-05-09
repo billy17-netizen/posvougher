@@ -1,0 +1,161 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id          String       @id @default(uuid())
+  name        String
+  address     String?
+  phone       String?
+  email       String?
+  logo        String?
+  taxRate     Float        @default(11.0)
+  currency    String       @default("IDR")
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       UserStore[]
+  products    Product[]
+  categories  Category[]
+  transactions Transaction[]
+  settings    StoreSettings[]
+  defaultUsers User[]      @relation("DefaultStore")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  username     String        @unique
+  password     String
+  role         Role?         
+  defaultStoreId String?     
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  stores       UserStore[]
+  transactions Transaction[]
+  defaultStore Store?        @relation("DefaultStore", fields: [defaultStoreId], references: [id], onDelete: SetNull)
+}
+
+model UserStore {
+  id        String   @id @default(uuid())
+  userId    String
+  storeId   String
+  role      Role
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, storeId])
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String
+  storeId   String
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Product {
+  id             String           @id @default(uuid())
+  name           String
+  description    String?
+  price          Int
+  stock          Int              @default(0)
+  image          String?
+  categoryId     String
+  storeId        String
+  category       Category         @relation(fields: [categoryId], references: [id])
+  store          Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  transactionItems TransactionItem[]
+}
+
+model Transaction {
+  id               String           @id @default(uuid())
+  transactionItems TransactionItem[]
+  totalAmount      Int
+  amountPaid       Int              @default(0)
+  changeAmount     Int              @default(0)
+  paymentMethod    PaymentMethod
+  cashierUserId    String
+  storeId          String
+  user             User             @relation(fields: [cashierUserId], references: [id])
+  store            Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  status           TransactionStatus @default(COMPLETED)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model TransactionItem {
+  id            String      @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+  price         Int
+  subtotal      Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Settings {
+  id          String    @id @default(uuid())
+  key         String    @unique
+  value       String
+  category    String    @default("general")
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model StoreSettings {
+  id          String    @id @default(uuid())
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  key         String
+  value       String
+  category    String    @default("general")
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([storeId, key])
+}
+
+enum Role {
+  ADMIN
+  KASIR
+  OWNER
+  SUPER_ADMIN
+}
+
+enum PaymentMethod {
+  CASH
+  DEBIT
+  CREDIT
+  QRIS
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
