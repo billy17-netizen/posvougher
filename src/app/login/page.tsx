@@ -5,12 +5,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, FormEvent, useEffect, useRef } from "react";
 import ClientOnly from "@/components/ClientOnly";
 import { useSimpleTranslation } from "@/lib/translations";
+import { useAuthRedirect } from "@/app/hooks/useAuthRedirect";
 
 export default function LoginPage() {
   const { t } = useSimpleTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams.get("registered") === "true";
+  const isForceLogout = searchParams.get("force_logout") === "true";
+  
+  // Use our custom hook to handle authentication redirects
+  useAuthRedirect();
   
   const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState({
@@ -43,24 +48,47 @@ export default function LoginPage() {
     if (isRegistered) {
       setSuccess(t("login.success.registration"));
     }
-    
-    // Check if the user is already logged in
-    const userJson = localStorage.getItem('currentUser');
-    if (userJson) {
-      // If user is already logged in, check if they have a store selected
-      const storeId = localStorage.getItem('currentStoreId');
-      if (storeId) {
-        console.log('User already logged in and has a store, redirecting to dashboard');
-        router.push('/dashboard');
-      } else {
-        console.log('User already logged in but no store selected, redirecting to stores');
-        router.push('/stores');
+
+    // Handle forced logout
+    if (isForceLogout) {
+      // Remove any remaining logout flags
+      localStorage.removeItem('force_logout');
+      sessionStorage.removeItem('logout_in_progress');
+      
+      // Clear any session-related data
+      sessionStorage.removeItem('dashboardNavTime');
+      
+      console.log('Force logout detected - ensuring all session data is cleared');
+      
+      // Make sure we don't get redirected away from login
+      const preventRedirect = () => {
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login') {
+          console.log('Prevented redirect away from login page after logout');
+          window.location.href = '/login?force_logout=true';
+        }
+      };
+      
+      // Check immediately and after a small delay to catch any async redirects
+      preventRedirect();
+      const checkTimer = setTimeout(preventRedirect, 100);
+      
+      return () => clearTimeout(checkTimer);
+    } else {
+      // Regular page load
+      // Clear any logout in progress flag
+      sessionStorage.removeItem('logout_in_progress');
+      localStorage.removeItem('force_logout');
+      
+      // Clear any other session and local storage items related to previous sessions
+      if (sessionStorage.getItem('dashboardNavTime')) {
+        sessionStorage.removeItem('dashboardNavTime');
       }
     }
 
     // Activate animations after component mounts
     setAnimationActive(true);
-  }, [isRegistered, router, t]);
+  }, [isRegistered, isForceLogout, t]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

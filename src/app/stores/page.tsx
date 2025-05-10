@@ -39,6 +39,9 @@ export default function StoresPage() {
       return;
     }
     
+    // We don't redirect if they have a store ID selected when coming from dashboard
+    // This allows users to switch stores from the dashboard
+    
     // Check user in localStorage
     const userJson = localStorage.getItem('currentUser');
     if (!userJson) {

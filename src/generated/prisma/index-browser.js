@@ -243,8 +243,6 @@ exports.Role = exports.$Enums.Role = {
 
 exports.PaymentMethod = exports.$Enums.PaymentMethod = {
   CASH: 'CASH',
-  DEBIT: 'DEBIT',
-  CREDIT: 'CREDIT',
   QRIS: 'QRIS'
 };
 

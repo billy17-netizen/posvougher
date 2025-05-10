@@ -149,8 +149,6 @@ enum Role {
 
 enum PaymentMethod {
   CASH
-  DEBIT
-  CREDIT
   QRIS
 }
 

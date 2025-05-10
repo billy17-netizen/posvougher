@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from "next/link";
-import { ShoppingCart, X, Plus, Minus, CreditCard, Banknote, Search, Filter, Check, Tag, ImageIcon, FileText, DollarSign, Receipt, ArrowLeft } from "lucide-react";
+import { ShoppingCart, X, Plus, Minus, CreditCard, Banknote, Search, Filter, Check, Tag, ImageIcon, FileText, DollarSign, Receipt, ArrowLeft, QrCode } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -50,7 +50,7 @@ interface TransactionData {
   totalAmount: number;
   amountPaid: number;
   changeAmount: number;
-  paymentMethod: 'CASH' | 'DEBIT' | 'CREDIT' | 'QRIS';
+  paymentMethod: 'CASH' | 'QRIS';
   cashierUserId?: string;
   storeId: string;
 }
@@ -158,7 +158,7 @@ export default function POSPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "DEBIT" | "CREDIT" | "QRIS">("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "QRIS">("CASH");
   const [amountPaid, setAmountPaid] = useState("");
   const [processing, setProcessing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -758,28 +758,16 @@ export default function POSPage() {
                   <div className="font-bold mb-2">{t('payment_method')}</div>
                   <div className="grid grid-cols-2 gap-2">
                     <button 
-                      className={`p-3 border-2 ${paymentMethod === 'CASH' ? 'border-brutalism-black bg-brutalism-yellow font-bold' : 'border-gray-300'} rounded-md flex items-center gap-2`}
+                      className={`p-3 border-2 ${paymentMethod === 'CASH' ? 'border-brutalism-black bg-brutalism-yellow font-bold' : 'border-gray-300'} rounded-md flex items-center justify-center gap-2`}
                       onClick={() => setPaymentMethod('CASH')}
                     >
                       <Banknote size={18} /> {t('cash')}
                     </button>
                     <button 
-                      className={`p-3 border-2 ${paymentMethod === 'DEBIT' ? 'border-brutalism-black bg-brutalism-blue text-white font-bold' : 'border-gray-300'} rounded-md flex items-center gap-2`}
-                      onClick={() => setPaymentMethod('DEBIT')}
-                    >
-                      <CreditCard size={18} /> {t('debit')}
-                    </button>
-                    <button 
-                      className={`p-3 border-2 ${paymentMethod === 'CREDIT' ? 'border-brutalism-black bg-brutalism-blue text-white font-bold' : 'border-gray-300'} rounded-md flex items-center gap-2`}
-                      onClick={() => setPaymentMethod('CREDIT')}
-                    >
-                      <CreditCard size={18} /> {t('credit')}
-                    </button>
-                    <button 
-                      className={`p-3 border-2 ${paymentMethod === 'QRIS' ? 'border-brutalism-black bg-brutalism-green text-white font-bold' : 'border-gray-300'} rounded-md flex items-center gap-2`}
+                      className={`p-3 border-2 ${paymentMethod === 'QRIS' ? 'border-brutalism-black bg-brutalism-green text-white font-bold' : 'border-gray-300'} rounded-md flex items-center justify-center gap-2`}
                       onClick={() => setPaymentMethod('QRIS')}
                     >
-                      <CreditCard size={18} /> {t('qris')}
+                      <QrCode size={18} /> {t('qris')}
                     </button>
                   </div>
                 </div>

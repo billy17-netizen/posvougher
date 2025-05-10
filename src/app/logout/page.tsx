@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LogoutPage() {
-  const router = useRouter();
-
   useEffect(() => {
+    // Set logout flags to prevent redirection to store page
+    localStorage.setItem('force_logout', 'true');
+    sessionStorage.setItem('logout_in_progress', 'true');
+    
     // Clear localStorage and cookies
     localStorage.removeItem('currentUser');
     localStorage.removeItem('currentStoreId');
@@ -18,18 +19,19 @@ export default function LogoutPage() {
     document.cookie = 'currentStoreId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     document.cookie = 'userId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     
-    // Call the logout API
+    // Call the logout API, but don't wait for it
     fetch("/api/auth/logout", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-    })
-    .finally(() => {
-      // Redirect to login page regardless of success/failure
-      router.push("/login");
+    }).catch(error => {
+      console.error("Error during logout API call:", error);
     });
-  }, [router]);
+    
+    // Redirect directly to login with force_logout parameter
+    window.location.href = "/login?force_logout=true";
+  }, []);
 
   return (
     <div className="flex h-screen items-center justify-center bg-background brutalism-bg brutalism-dots">

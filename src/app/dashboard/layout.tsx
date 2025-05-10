@@ -18,6 +18,7 @@ import {
   Store
 } from "lucide-react";
 import LogoutButton from "../../components/LogoutButton";
+import SwitchStoreButton from "../../components/SwitchStoreButton";
 import { useSettings } from "@/contexts/SettingsContext";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import LoadingIndicator from "@/components/LoadingIndicator";
@@ -60,6 +61,33 @@ const SidebarLink = ({ href, icon, label, isActiveFn }: { href: string, icon: Re
         setSidebarOpen(false);
       }
       
+      // Force reload for dashboard to ensure superadmin state is properly detected
+      if (href === '/dashboard') {
+        // Check if user is superadmin and set flag before navigating
+        try {
+          const userJson = localStorage.getItem('currentUser');
+          if (userJson) {
+            const user = JSON.parse(userJson);
+            const isSA = user.role === 'SUPER_ADMIN' || 
+                         user.stores?.some((store: any) => store.role === 'SUPER_ADMIN');
+            
+            if (isSA) {
+              // Set superadmin status in localStorage
+              localStorage.setItem('isSuperAdmin', 'true');
+              
+              // Set a timestamp to indicate a fresh navigation
+              sessionStorage.setItem('dashboardNavTime', Date.now().toString());
+            }
+          }
+        } catch (e) {
+          console.error('Error checking superadmin status:', e);
+        }
+        
+        // Use hard navigation to ensure clean state
+        window.location.href = href;
+        return;
+      }
+      
       // Reset loading after a short delay if navigation gets stuck
       setTimeout(() => {
         setManualLoading(false);
@@ -87,6 +115,7 @@ const SidebarLink = ({ href, icon, label, isActiveFn }: { href: string, icon: Re
 function DashboardLayoutContent({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [sidebarLoading, setSidebarLoading] = useState<boolean>(true);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const pathname = usePathname();
   const settings = useSettings();
@@ -184,6 +213,7 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
         }
       }
       setLoading(false);
+      setSidebarLoading(false);
     };
 
     getUserFromLocalStorage();
@@ -254,6 +284,17 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
                        currentUser?.stores?.some((store: any) => store.role === 'SUPER_ADMIN') ||
                        isLocalSuperAdmin;
   
+  // Check for superadmin status immediately to avoid UI flashing
+  useEffect(() => {
+    // Early check for superadmin flag to avoid sidebar flickering
+    const superAdminFlag = localStorage.getItem('isSuperAdmin') === 'true';
+    if (superAdminFlag) {
+      // If flag is true, set state immediately
+      setIsLocalSuperAdmin(true);
+      setSidebarLoading(false);
+    }
+  }, []);
+  
   // Check localStorage after component mounts (client-side only)
   useEffect(() => {
     // Check for superadmin flag in localStorage
@@ -292,8 +333,15 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
             {currentStore?.name || 'POS Vougher'}
           </h1>
           
-          <div className="h-8 w-8 rounded-full bg-brutalism-blue text-white flex items-center justify-center font-bold border-2 border-brutalism-black shadow-brutal-xs">
-            {getUserInitials()}
+          <div className="flex items-center gap-2 mr-2">
+            {isSuperAdmin ? (
+              <LogoutButton className="text-xs bg-white hover:bg-red-50 hover:text-red-600 border-2 border-brutalism-black shadow-brutal-xs px-2" />
+            ) : (
+              <SwitchStoreButton className="text-xs bg-white hover:bg-brutalism-yellow border-2 border-brutalism-black shadow-brutal-xs px-2" />
+            )}
+            <div className="h-8 w-8 rounded-full bg-brutalism-blue text-white flex items-center justify-center font-bold border-2 border-brutalism-black shadow-brutal-xs">
+              {getUserInitials()}
+            </div>
           </div>
         </div>
         
@@ -307,124 +355,134 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
         )}
         
         {/* Sidebar - now has higher z-index than overlay */}
-        <div 
-          className={`md:w-64 fixed md:static z-30 transition-all duration-300 ${
-            sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-0 md:translate-x-0 md:w-64'
-          } bg-white border-r-3 border-brutalism-black h-full overflow-hidden`}
-          style={{ 
-            top: '56px', 
-            height: 'calc(100vh - 0)', 
-            maxHeight: '100vh'
-          }}
-        >
-          <div className="p-4 border-b-3 border-brutalism-black bg-brutalism-yellow md:flex hidden">
-            <div className="flex-1">
-              <h1 className="text-xl font-bold text-brutalism-black">{currentStore?.name || 'POS Vougher'}</h1>
-              <p className="text-sm text-brutalism-black">{t('app_tagline')}</p>
+        {!sidebarLoading ? (
+          <div 
+            className={`md:w-64 fixed md:static z-30 transition-all duration-300 ${
+              sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-0 md:translate-x-0 md:w-64'
+            } bg-white border-r-3 border-brutalism-black h-full overflow-hidden`}
+            style={{ 
+              top: '56px', 
+              height: 'calc(100vh - 0)', 
+              maxHeight: '100vh'
+            }}
+          >
+            <div className="p-4 border-b-3 border-brutalism-black bg-brutalism-yellow md:flex hidden">
+              <div className="flex-1">
+                <h1 className="text-xl font-bold text-brutalism-black">{currentStore?.name || 'POS Vougher'}</h1>
+                <p className="text-sm text-brutalism-black">{t('app_tagline')}</p>
+              </div>
             </div>
+            <nav className="p-3 overflow-y-auto" style={{ height: 'calc(100% - 74px)' }}>
+              <ul className="space-y-2">
+                {isSuperAdmin ? (
+                  // Super Admin menu - only Settings and Store Management
+                  <>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard" 
+                        icon={<Home className="w-5 h-5 mr-2" />} 
+                        label={t('dashboard')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/stores" 
+                        icon={<Store className="w-5 h-5 mr-2" />} 
+                        label="Store Management"
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/pengaturan" 
+                        icon={<Settings className="w-5 h-5 mr-2" />} 
+                        label={t('settings')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li className="mt-8">
+                      <LogoutButton className="w-full text-left bg-white hover:bg-red-50 hover:text-red-600 border-2 border-brutalism-black shadow-brutal-xs p-2" />
+                    </li>
+                  </>
+                ) : (
+                  // Regular user menu - all options
+                  <>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard" 
+                        icon={<Home className="w-5 h-5 mr-2" />} 
+                        label={t('dashboard')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/products" 
+                        icon={<PackageOpen className="w-5 h-5 mr-2" />} 
+                        label={t('products')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/categories" 
+                        icon={<Tag className="w-5 h-5 mr-2" />} 
+                        label={t('categories')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/pos" 
+                        icon={<CreditCard className="w-5 h-5 mr-2" />} 
+                        label={t('pos')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/transactions" 
+                        icon={<ShoppingCart className="w-5 h-5 mr-2" />} 
+                        label={t('transactions')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/reports" 
+                        icon={<BarChart3 className="w-5 h-5 mr-2" />} 
+                        label={t('reports')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/pengguna" 
+                        icon={<Users className="w-5 h-5 mr-2" />} 
+                        label={t('users')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                    <li>
+                      <SidebarLink 
+                        href="/dashboard/pengaturan" 
+                        icon={<Settings className="w-5 h-5 mr-2" />} 
+                        label={t('settings')}
+                        isActiveFn={isActive}
+                      />
+                    </li>
+                  </>
+                )}
+              </ul>
+            </nav>
           </div>
-          <nav className="p-3 overflow-y-auto" style={{ height: 'calc(100% - 74px)' }}>
-            <ul className="space-y-2">
-              {isSuperAdmin ? (
-                // Super Admin menu - only Settings and Store Management
-                <>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard" 
-                      icon={<Home className="w-5 h-5 mr-2" />} 
-                      label={t('dashboard')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/stores" 
-                      icon={<Store className="w-5 h-5 mr-2" />} 
-                      label="Store Management"
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/pengaturan" 
-                      icon={<Settings className="w-5 h-5 mr-2" />} 
-                      label={t('settings')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                </>
-              ) : (
-                // Regular user menu - all options
-                <>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard" 
-                      icon={<Home className="w-5 h-5 mr-2" />} 
-                      label={t('dashboard')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/products" 
-                      icon={<PackageOpen className="w-5 h-5 mr-2" />} 
-                      label={t('products')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/categories" 
-                      icon={<Tag className="w-5 h-5 mr-2" />} 
-                      label={t('categories')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/pos" 
-                      icon={<CreditCard className="w-5 h-5 mr-2" />} 
-                      label={t('pos')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/transactions" 
-                      icon={<ShoppingCart className="w-5 h-5 mr-2" />} 
-                      label={t('transactions')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/reports" 
-                      icon={<BarChart3 className="w-5 h-5 mr-2" />} 
-                      label={t('reports')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/pengguna" 
-                      icon={<Users className="w-5 h-5 mr-2" />} 
-                      label={t('users')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                  <li>
-                    <SidebarLink 
-                      href="/dashboard/pengaturan" 
-                      icon={<Settings className="w-5 h-5 mr-2" />} 
-                      label={t('settings')}
-                      isActiveFn={isActive}
-                    />
-                  </li>
-                </>
-              )}
-            </ul>
-          </nav>
-        </div>
+        ) : (
+          // Loading state for sidebar
+          <div className="md:w-64 fixed md:static z-30 bg-white border-r-3 border-brutalism-black h-full overflow-hidden flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-brutalism-black border-t-brutalism-blue rounded-full animate-spin"></div>
+          </div>
+        )}
         
         {/* Main content */}
         <div className="flex-1 w-full md:ml-0 pt-14 md:pt-0 flex flex-col h-screen overflow-hidden">
@@ -441,8 +499,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
               </h1>
               
               {currentStore && (
-                <div className="ml-4 px-3 py-1 bg-brutalism-yellow border-2 border-brutalism-black rounded-md shadow-brutal-xs">
-                  <span className="text-sm font-medium">{currentStore.name}</span>
+                <div className="flex items-center gap-2 ml-4">
+                  <div className="px-3 py-1 bg-brutalism-yellow border-2 border-brutalism-black rounded-md shadow-brutal-xs">
+                    <span className="text-sm font-medium">{currentStore.name}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -460,7 +520,11 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
                    String(currentUser.role)}
                 </p>
               </div>
-              <LogoutButton className="ml-4 bg-white hover:bg-brutalism-red hover:text-white border-2 border-brutalism-black shadow-brutal-xs" />
+              {isSuperAdmin ? (
+                <LogoutButton className="ml-4 bg-white hover:bg-red-50 hover:text-red-600 border-2 border-brutalism-black shadow-brutal-xs" />
+              ) : (
+                <SwitchStoreButton className="ml-4 bg-white hover:bg-brutalism-yellow hover:text-brutalism-black border-2 border-brutalism-black shadow-brutal-xs" />
+              )}
             </div>
           </header>
           
@@ -476,8 +540,10 @@ function DashboardLayoutContent({ children }: { children: ReactNode }) {
             </h1>
             
             {currentStore && (
-              <div className="mt-1 inline-block px-2 py-1 bg-brutalism-yellow border-2 border-brutalism-black rounded-md shadow-brutal-xs">
-                <span className="text-sm font-medium">{currentStore.name}</span>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="inline-block px-2 py-1 bg-brutalism-yellow border-2 border-brutalism-black rounded-md shadow-brutal-xs">
+                  <span className="text-sm font-medium">{currentStore.name}</span>
+                </div>
               </div>
             )}
           </div>

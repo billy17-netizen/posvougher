@@ -75,8 +75,6 @@ export type Role = (typeof Role)[keyof typeof Role]
 
 export const PaymentMethod: {
   CASH: 'CASH',
-  DEBIT: 'DEBIT',
-  CREDIT: 'CREDIT',
   QRIS: 'QRIS'
 };
 

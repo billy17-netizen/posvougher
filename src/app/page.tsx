@@ -4,9 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ClientFooter from "../components/ClientFooter";
 import ClientOnly from "../components/ClientOnly";
 import Screenshot from '@/components/ui/Screenshot';
+import { useAuthRedirect } from "@/app/hooks/useAuthRedirect";
 
 // Static loading fallback
 const LoadingCard = () => (
@@ -38,6 +40,10 @@ const posScreenshotPlaceholder = "/images/pos.png";
 
 export default function Home() {
   const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
+  
+  // Use our custom hook to handle authentication redirects
+  useAuthRedirect();
 
   useEffect(() => {
     setIsClient(true);
@@ -80,7 +86,7 @@ export default function Home() {
         <div className="bg-dots"></div>
       </div>
 
-      <div className="hero-section animate-in w-full px-4 sm:px-8" style={{ paddingTop: "3rem", paddingBottom: "5rem" }}>
+      <div className="hero-section animate-in w-full px-4 sm:px-8" style={{ paddingTop: "2rem", paddingBottom: "4rem" }}>
         <div className="max-w-screen-xl mx-auto" style={{ 
           textAlign: "center", 
           position: "relative", 
@@ -92,20 +98,27 @@ export default function Home() {
         }}>
           <div className="animate-slide-right" style={{ 
             position: "relative",
-            marginBottom: "0.5rem"
+            marginBottom: "0.5rem",
+            width: "100%",
+            maxWidth: "100%",
+            overflow: "hidden",
+            display: "flex",
+            justifyContent: "center"
           }}>
             <h1 style={{ 
-              fontSize: "clamp(3rem, 10vw, 5rem)", 
+              fontSize: "clamp(2rem, 8vw, 5rem)", 
               fontWeight: "900", 
               marginBottom: "1rem", 
               display: "inline-block", 
-              padding: "0.5rem 2rem",
+              padding: "0.5rem 1.5rem",
               backgroundColor: "white", 
               border: "4px solid #0F172A",
-              boxShadow: "12px 12px 0 rgba(0,0,0,0.9)",
+              boxShadow: "8px 8px 0 rgba(0,0,0,0.9)",
               transform: "rotate(-1deg)",
               position: "relative",
-              zIndex: "1"
+              zIndex: "1",
+              width: "auto",
+              maxWidth: "90%"
             }}>
               POS Vougher
             </h1>
@@ -117,34 +130,38 @@ export default function Home() {
               left: "15px",
               backgroundColor: "#4338ca",
               zIndex: "0",
-              transform: "rotate(2deg)"
+              transform: "rotate(2deg)",
+              maxWidth: "90%"
             }}></div>
           </div>
           
           <p className="animate-slide-left max-w-3xl" style={{ 
-            fontSize: "1.5rem", 
+            fontSize: "clamp(1rem, 4vw, 1.5rem)", 
             fontWeight: "600",
-            margin: "0 auto 2.5rem",
+            margin: "0 auto 2rem",
             backgroundColor: "#FEF3C7",
             border: "3px solid #0F172A",
-            padding: "0.75rem 1.5rem",
+            padding: "0.75rem 1rem",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
-            transform: "rotate(0.5deg)"
+            transform: "rotate(0.5deg)",
+            width: "auto",
+            maxWidth: "90%"
           }}>
             Sistem Kasir Modern dengan Desain Neu Brutalism
           </p>
           
           <div className="animate-in" style={{ 
             display: "flex", 
-            gap: "1.5rem", 
+            gap: "1rem", 
             justifyContent: "center", 
-            flexWrap: "wrap" 
+            flexWrap: "wrap",
+            width: "100%"
           }}>
             <ClientOnly>
               <Link href="/login">
                 <span className="btn btn-primary login-button" data-animation="bounce" style={{ 
-                  fontSize: "1.25rem", 
-                  padding: "0.75rem 2rem",
+                  fontSize: "clamp(1rem, 3vw, 1.25rem)", 
+                  padding: "0.75rem 1.5rem",
                   boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
                   border: "3px solid #0F172A",
                   transition: "transform 0.3s ease, box-shadow 0.3s ease"
@@ -157,8 +174,8 @@ export default function Home() {
             <ClientOnly>
               <Link href="/register">
                 <span className="btn btn-outline register-button" data-animation="bounce" style={{ 
-                  fontSize: "1.25rem", 
-                  padding: "0.75rem 2rem",
+                  fontSize: "clamp(1rem, 3vw, 1.25rem)", 
+                  padding: "0.75rem 1.5rem",
                   boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
                   border: "3px solid #0F172A",
                   transition: "transform 0.3s ease, box-shadow 0.3s ease"
@@ -172,19 +189,19 @@ export default function Home() {
       </div>
 
       <div id="features" className="features-section w-full px-4 sm:px-8" data-animation="fade-in" style={{ 
-        padding: "2.5rem",
+        padding: "1.5rem",
         backgroundColor: "white",
         border: "4px solid #0F172A",
         boxShadow: "12px 12px 0 rgba(0,0,0,0.9)",
-        marginBottom: "4rem",
+        marginBottom: "3rem",
         position: "relative",
         zIndex: "1",
         backgroundImage: "radial-gradient(#E0E7FF 1.5px, transparent 1.5px)",
         backgroundSize: "30px 30px"
       }}>
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h2 className="animate-on-scroll inline-block mx-auto" data-animation="slide-right" style={{ 
-            fontSize: "2.75rem", 
+            fontSize: "clamp(1.75rem, 5vw, 2.75rem)", 
             fontWeight: "900",
             borderBottom: "4px solid #0F172A",
             paddingBottom: "0.5rem",
@@ -203,11 +220,7 @@ export default function Home() {
           </h2>
         </div>
         
-        <div className="stagger-children max-w-screen-xl mx-auto" style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", 
-          gap: "2.5rem" 
-        }}>
+        <div className="stagger-children max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ClientOnly fallback={<LoadingCard />}>
             <FeatureCard 
               title="Manajemen Produk"
@@ -246,7 +259,7 @@ export default function Home() {
       </div>
 
       <div className="brutal-container animate-on-scroll w-full px-4 sm:px-8" data-animation="slide-up" style={{ 
-        marginBottom: "4rem",
+        marginBottom: "3rem",
         position: "relative"
       }}>
         <div style={{
@@ -258,29 +271,28 @@ export default function Home() {
           transform: "rotate(15deg)",
           top: "-20px",
           left: "-20px",
-          zIndex: "0"
-        }}></div>
+          zIndex: "0",
+          display: "none"
+        }} className="sm:block"></div>
         
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h2 className="brutal-header animate-on-scroll inline-block mx-auto" data-animation="slide-right" style={{
             position: "relative",
             zIndex: "1",
+            fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
           }}>
             Fitur Unggulan
           </h2>
         </div>
 
-        <div className="stagger-children max-w-screen-xl mx-auto" style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", 
-          gap: "2.5rem",
+        <div className="stagger-children max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" style={{
           position: "relative",
           zIndex: "1"
         }}>
           <div className="animate-on-scroll" data-animation="slide-up" style={{
             border: "3px solid #0F172A",
             borderRadius: "8px",
-            padding: "1.5rem",
+            padding: "1.25rem",
             backgroundColor: "white",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
             transition: "transform 0.3s ease",
@@ -294,14 +306,14 @@ export default function Home() {
             }}>✓</div>
             <div>
               <h3 style={{ fontSize: "1.25rem", fontWeight: "800", marginBottom: "0.75rem" }}>Antarmuka Intuitif</h3>
-              <p style={{ fontSize: "1.1rem", lineHeight: "1.6" }}>Desain yang modern dan mudah digunakan untuk semua pengguna</p>
+              <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>Desain yang modern dan mudah digunakan untuk semua pengguna</p>
             </div>
           </div>
           
           <div className="animate-on-scroll" data-animation="slide-up" style={{
             border: "3px solid #0F172A",
             borderRadius: "8px",
-            padding: "1.5rem",
+            padding: "1.25rem",
             backgroundColor: "white",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
             transition: "transform 0.3s ease",
@@ -315,14 +327,14 @@ export default function Home() {
             }}>✓</div>
             <div>
               <h3 style={{ fontSize: "1.25rem", fontWeight: "800", marginBottom: "0.75rem" }}>Laporan Real-time</h3>
-              <p style={{ fontSize: "1.1rem", lineHeight: "1.6" }}>Pantau penjualan dan stok secara real-time</p>
+              <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>Pantau penjualan dan stok secara real-time</p>
             </div>
           </div>
           
           <div className="animate-on-scroll" data-animation="slide-up" style={{
             border: "3px solid #0F172A",
             borderRadius: "8px",
-            padding: "1.5rem",
+            padding: "1.25rem",
             backgroundColor: "white",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
             transition: "transform 0.3s ease",
@@ -336,14 +348,14 @@ export default function Home() {
             }}>✓</div>
             <div>
               <h3 style={{ fontSize: "1.25rem", fontWeight: "800", marginBottom: "0.75rem" }}>Multi Pengguna</h3>
-              <p style={{ fontSize: "1.1rem", lineHeight: "1.6" }}>Dukung banyak kasir dengan level akses berbeda</p>
+              <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>Dukung banyak kasir dengan level akses berbeda</p>
             </div>
           </div>
           
           <div className="animate-on-scroll" data-animation="slide-up" style={{
             border: "3px solid #0F172A",
             borderRadius: "8px",
-            padding: "1.5rem",
+            padding: "1.25rem",
             backgroundColor: "white",
             boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
             transition: "transform 0.3s ease",
@@ -357,7 +369,7 @@ export default function Home() {
             }}>✓</div>
             <div>
               <h3 style={{ fontSize: "1.25rem", fontWeight: "800", marginBottom: "0.75rem" }}>Berbagai Metode Pembayaran</h3>
-              <p style={{ fontSize: "1.1rem", lineHeight: "1.6" }}>Dukung pembayaran tunai, kartu, dan QRIS</p>
+              <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>Dukung pembayaran tunai, kartu, dan QRIS</p>
             </div>
           </div>
         </div>
@@ -365,17 +377,17 @@ export default function Home() {
 
       {/* Screenshot section */}
       <div className="brutal-container animate-on-scroll w-full px-4 sm:px-8" data-animation="fade-in" style={{ 
-        marginBottom: "4rem",
-        padding: "2rem",
+        marginBottom: "3rem",
+        padding: "1.5rem",
         backgroundColor: "#F3F4F6",
         border: "4px solid #0F172A",
         boxShadow: "12px 12px 0 rgba(0,0,0,0.9)",
         position: "relative"
       }}>
         <h2 className="animate-on-scroll text-center mx-auto" data-animation="slide-right" style={{ 
-          fontSize: "2.5rem", 
+          fontSize: "clamp(1.75rem, 5vw, 2.5rem)", 
           fontWeight: "900", 
-          marginBottom: "2rem",
+          marginBottom: "1.5rem",
           position: "relative",
           display: "inline-block"
         }}>
@@ -402,9 +414,9 @@ export default function Home() {
 
         <p className="animate-on-scroll max-w-3xl mx-auto" data-animation="fade-in" style={{ 
           textAlign: "center", 
-          fontSize: "1.1rem", 
+          fontSize: "1rem", 
           padding: "0 1rem", 
-          margin: "0 auto 2rem"
+          margin: "1.5rem auto 2rem"
         }}>
           Desain antarmuka yang modern dan intuitif akan memudahkan Anda mengelola bisnis dengan efisien
         </p>
@@ -413,8 +425,8 @@ export default function Home() {
           <ClientOnly>
             <Link href="/register">
               <span className="btn btn-primary register-cta" data-animation="bounce" style={{ 
-                fontSize: "1.25rem", 
-                padding: "0.75rem 2rem",
+                fontSize: "clamp(1rem, 3vw, 1.25rem)", 
+                padding: "0.75rem 1.5rem",
                 boxShadow: "6px 6px 0 rgba(0,0,0,0.9)",
                 border: "3px solid #0F172A",
                 transition: "transform 0.3s ease, box-shadow 0.3s ease"
@@ -428,12 +440,12 @@ export default function Home() {
 
       {/* Testimonial section */}
       <div className="brutal-container animate-on-scroll w-full px-4 sm:px-8" data-animation="slide-up" style={{ 
-        marginBottom: "5rem",
-        padding: "1.5rem"
+        marginBottom: "4rem",
+        padding: "1rem"
       }}>
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <h2 className="animate-on-scroll inline-block mx-auto" data-animation="slide-right" style={{ 
-            fontSize: "2.5rem", 
+            fontSize: "clamp(1.75rem, 5vw, 2.5rem)", 
             fontWeight: "900",
             position: "relative"
           }}>
@@ -441,11 +453,7 @@ export default function Home() {
           </h2>
         </div>
 
-        <div className="stagger-children max-w-screen-xl mx-auto" style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", 
-          gap: "2rem"
-        }}>
+        <div className="stagger-children max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ClientOnly fallback={<LoadingCard />}>
             <TestimonialCard 
               quote="POS Vougher sangat membantu bisnis kafe saya. Tampilan yang modern dan mudah digunakan."
@@ -524,21 +532,15 @@ export default function Home() {
         <div style={{
           position: "relative",
           zIndex: "1",
-          padding: "3rem 1.5rem 2rem"
+          padding: "2rem 1rem 1.5rem"
         }}>
           {/* Main footer sections */}
-          <div className="stagger-children max-w-screen-xl mx-auto" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "3rem",
-            marginBottom: "2.5rem",
-            textAlign: "left"
-          }}>
+          <div className="stagger-children max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 text-left">
             <div className="animate-on-scroll" data-animation="slide-right">
               <h3 style={{ 
                 fontWeight: "bold", 
                 marginBottom: "1rem", 
-                fontSize: "1.5rem",
+                fontSize: "1.25rem",
                 borderBottom: "3px solid #0F172A",
                 paddingBottom: "0.5rem",
                 display: "inline-block"
@@ -546,20 +548,20 @@ export default function Home() {
                 POS Vougher
               </h3>
               <p style={{ 
-                marginBottom: "1.5rem", 
-                fontSize: "1.125rem", 
-                lineHeight: "1.6"
+                marginBottom: "1rem", 
+                fontSize: "1rem", 
+                lineHeight: "1.5"
               }}>
                 Sistem kasir modern dengan desain Neu Brutalism untuk berbagai jenis bisnis
               </p>
               <div style={{
                 display: "flex",
-                gap: "1rem",
-                marginTop: "1rem"
+                gap: "0.75rem",
+                marginTop: "0.75rem"
               }}>
                 <div style={{
-                  width: "40px",
-                  height: "40px",
+                  width: "36px",
+                  height: "36px",
                   backgroundColor: "#f3f4f6",
                   borderRadius: "6px",
                   display: "flex",
@@ -569,8 +571,8 @@ export default function Home() {
                   fontSize: "1.25rem"
                 }}>📱</div>
                 <div style={{
-                  width: "40px",
-                  height: "40px",
+                  width: "36px",
+                  height: "36px",
                   backgroundColor: "#f3f4f6",
                   borderRadius: "6px",
                   display: "flex",
@@ -580,8 +582,8 @@ export default function Home() {
                   fontSize: "1.25rem"
                 }}>✉️</div>
                 <div style={{
-                  width: "40px",
-                  height: "40px",
+                  width: "36px",
+                  height: "36px",
                   backgroundColor: "#f3f4f6",
                   borderRadius: "6px",
                   display: "flex",

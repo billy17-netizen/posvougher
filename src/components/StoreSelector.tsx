@@ -1,7 +1,11 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Store, Home } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
 
 interface StoreItem {
   id: string;
@@ -15,6 +19,7 @@ const StoreSelector = () => {
   const [error, setError] = useState<string | null>(null);
   const { currentStore, setCurrentStore } = useStore();
   const settings = useSettings();
+  const router = useRouter();
 
   // Translation function
   const t = (key: string) => {
@@ -87,6 +92,11 @@ const StoreSelector = () => {
     window.location.reload();
   };
 
+  const handleSwitchStore = () => {
+    // Navigate to the stores page to select a different store
+    router.push('/stores');
+  };
+
   if (loading) {
     return (
       <div className="p-4 border-3 border-brutalism-black rounded-md shadow-brutal-sm bg-white animate-pulse">
@@ -148,6 +158,20 @@ const StoreSelector = () => {
           </button>
         ))}
       </div>
+
+      {/* <div className="flex items-center gap-2 mt-4">
+        <Button 
+          onClick={handleSwitchStore} 
+          className="bg-brutalism-yellow text-brutalism-black hover:bg-white border-2 border-brutalism-black flex items-center gap-2 text-sm"
+        >
+          <Store size={16} />
+          {currentStore?.name ? (
+            <span>Switch Store</span>
+          ) : (
+            <span>Select Store</span>
+          )}
+        </Button>
+      </div> */}
     </div>
   );
 };

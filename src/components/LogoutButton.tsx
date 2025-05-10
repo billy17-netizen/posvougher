@@ -1,7 +1,6 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface LogoutButtonProps {
@@ -9,49 +8,28 @@ interface LogoutButtonProps {
 }
 
 export default function LogoutButton({ className = "" }: LogoutButtonProps) {
-  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     try {
       setIsLoggingOut(true);
       
-      // Call the logout API
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Logout failed");
-      }
+      // Set the logout flag immediately to prevent any redirects
+      localStorage.setItem('force_logout', 'true');
+      sessionStorage.setItem('logout_in_progress', 'true');
       
-      // Clear all relevant data from localStorage
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('currentStoreId');
-      localStorage.removeItem('currentStoreName');
-      
-      // Clear cookies
-      document.cookie = 'currentStoreId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      console.log('Logged out successfully, cleared all data');
-      
-      // Redirect to login page - use window.location for a full page reload
-      window.location.href = "/login";
+      // Go to dedicated logout page which will handle the full logout process
+      window.location.href = "/logout";
     } catch (error) {
-      console.error("Logout error:", error);
-      // Clear local storage anyway for security
+      console.error("Error initiating logout:", error);
+      
+      // In case of error, try direct logout
       localStorage.removeItem('currentUser');
       localStorage.removeItem('currentStoreId');
       localStorage.removeItem('currentStoreName');
+      localStorage.removeItem('isSuperAdmin');
       
-      // Clear cookies
-      document.cookie = 'currentStoreId=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      // For simplicity, we'll still redirect to login even if logout fails
-      window.location.href = "/login";
+      window.location.href = "/login?force_logout=true";
     }
   };
 

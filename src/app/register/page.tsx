@@ -4,9 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, FormEvent, useRef, useEffect } from "react";
 import ClientOnly from "@/components/ClientOnly";
+import { useAuthRedirect } from "@/app/hooks/useAuthRedirect";
 
 export default function RegisterPage() {
   const router = useRouter();
+  
+  // Use our custom hook to handle authentication redirects
+  useAuthRedirect();
+  
   const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState({
     name: "",

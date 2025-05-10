@@ -31,6 +31,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const loadStoreData = () => {
       try {
+        // Check if we're in the logout process - if so, don't redirect
+        const isLoggingOut = pathname === '/login' || 
+                            pathname === '/logout' || 
+                            sessionStorage.getItem('logout_in_progress') === 'true' ||
+                            localStorage.getItem('force_logout') === 'true' ||
+                            pathname.includes('force_logout=true');
+        
+        // If we're logging out, don't even try to load or redirect
+        if (isLoggingOut) {
+          console.log('StoreContext: Logout in progress, skipping store checks');
+          setIsLoading(false);
+          return;
+        }
+        
         const storeId = localStorage.getItem('currentStoreId');
         const storeName = localStorage.getItem('currentStoreName');
         
@@ -54,20 +68,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             try {
               const user = JSON.parse(userJson);
               isSuperAdmin = user.role === 'SUPER_ADMIN' || 
-                           user.stores?.some((store: any) => store.role === 'SUPER_ADMIN');
+                           user.stores?.some((store: any) => store.role === 'SUPER_ADMIN') ||
+                           localStorage.getItem('isSuperAdmin') === 'true';
             } catch (error) {
               console.error('Error parsing user data:', error);
             }
           }
           
-          // Skip redirect if user is a super admin and accessing the stores management page
-          if (isSuperAdmin && pathname === '/dashboard/stores') {
-            console.log('StoreContext: Super admin accessing stores management, skipping redirect');
+          // Skip redirect if user is a super admin and accessing dashboard or store management
+          if (isSuperAdmin && (pathname === '/dashboard' || pathname === '/dashboard/stores' || pathname.startsWith('/dashboard/pengaturan'))) {
+            console.log('StoreContext: Super admin accessing admin area, skipping redirect');
             setIsLoading(false);
-          } else {
+          } else if (!isLoggingOut) { // Only redirect if not in logout process
             // If on dashboard with no store, redirect to store selection
             console.log('StoreContext: No store found, redirecting to /stores');
             router.push('/stores');
+            setIsLoading(false);
+          } else {
             setIsLoading(false);
           }
         } else {
