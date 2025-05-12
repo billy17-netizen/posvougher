@@ -96,6 +96,7 @@ model Transaction {
   paymentMethod    PaymentMethod
   cashierUserId    String
   storeId          String
+  midtransToken    String?          // Add field for Midtrans token storage
   user             User             @relation(fields: [cashierUserId], references: [id])
   store            Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   status           TransactionStatus @default(COMPLETED)
@@ -150,6 +151,7 @@ enum Role {
 enum PaymentMethod {
   CASH
   QRIS
+  MIDTRANS
 }
 
 enum TransactionStatus {

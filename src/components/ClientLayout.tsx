@@ -69,6 +69,13 @@ export default function ClientLayout({
             },
           }}
         />
+        {/* Midtrans Client SDK - Load from sandbox for development, change to production URL in production */}
+        <script 
+          src={process.env.NODE_ENV === 'production' 
+            ? "https://app.midtrans.com/snap/snap.js" 
+            : "https://app.sandbox.midtrans.com/snap/snap.js"}
+          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || 'SB-Mid-client-gFXH94supPKrBTUf'}
+        ></script>
         {children}
       </body>
     </html>

@@ -183,6 +183,7 @@ exports.Prisma.TransactionScalarFieldEnum = {
   paymentMethod: 'paymentMethod',
   cashierUserId: 'cashierUserId',
   storeId: 'storeId',
+  midtransToken: 'midtransToken',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -243,7 +244,8 @@ exports.Role = exports.$Enums.Role = {
 
 exports.PaymentMethod = exports.$Enums.PaymentMethod = {
   CASH: 'CASH',
-  QRIS: 'QRIS'
+  QRIS: 'QRIS',
+  MIDTRANS: 'MIDTRANS'
 };
 
 exports.TransactionStatus = exports.$Enums.TransactionStatus = {

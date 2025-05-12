@@ -369,7 +369,7 @@ export default function Home() {
             }}>✓</div>
             <div>
               <h3 style={{ fontSize: "1.25rem", fontWeight: "800", marginBottom: "0.75rem" }}>Berbagai Metode Pembayaran</h3>
-              <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>Dukung pembayaran tunai, kartu, dan QRIS</p>
+              <p style={{ fontSize: "1rem", lineHeight: "1.6" }}>Dukung pembayaran tunai, Bank Transfer</p>
             </div>
           </div>
         </div>

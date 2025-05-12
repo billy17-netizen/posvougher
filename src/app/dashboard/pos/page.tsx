@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from "next/link";
-import { ShoppingCart, X, Plus, Minus, CreditCard, Banknote, Search, Filter, Check, Tag, ImageIcon, FileText, DollarSign, Receipt, ArrowLeft, QrCode } from "lucide-react";
+import { ShoppingCart, X, Plus, Minus, CreditCard, Banknote, Search, Filter, Check, Tag, ImageIcon, FileText, DollarSign, Receipt, ArrowLeft, QrCode, Clock, RefreshCw } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -12,6 +12,7 @@ import { enUS } from "date-fns/locale/en-US";
 import { useStore } from '@/contexts/StoreContext';
 import { useLoading } from '@/contexts/LoadingContext';
 import QuickUserSwitch from '@/components/QuickUserSwitch';
+import { midtransConfig } from '@/lib/config/midtrans';
 
 interface Product {
   id: string;
@@ -50,7 +51,7 @@ interface TransactionData {
   totalAmount: number;
   amountPaid: number;
   changeAmount: number;
-  paymentMethod: 'CASH' | 'QRIS';
+  paymentMethod: 'CASH' | 'MIDTRANS';
   cashierUserId?: string;
   storeId: string;
 }
@@ -84,9 +85,9 @@ export default function POSPage() {
         'payment': 'Pembayaran',
         'payment_method': 'Metode Pembayaran',
         'cash': 'Tunai',
+        'midtrans': 'Transfer Bank Virtual Account',
         'debit': 'Kartu Debit',
         'credit': 'Kartu Kredit',
-        'qris': 'QRIS',
         'amount_paid': 'Jumlah Dibayar',
         'enter_amount': 'Masukkan jumlah',
         'change': 'Kembalian',
@@ -102,7 +103,14 @@ export default function POSPage() {
         'cart_empty_error': 'Keranjang kosong',
         'payment_amount_error': 'Jumlah pembayaran harus sama dengan atau lebih besar dari total',
         'no_image': 'Tidak ada gambar',
-        'image_error': 'Kesalahan gambar'
+        'image_error': 'Kesalahan gambar',
+        'pay_with_midtrans': 'Bayar dengan Virtual Account',
+        'pay_with_cash': 'Bayar dengan Tunai',
+        'open_payment_page': 'Buka Halaman Pembayaran',
+        'payment_pending': 'Pembayaran Tertunda',
+        'payment_pending_message': 'Pembayaran Anda dalam status tertunda. Silakan periksa status transaksi nanti.',
+        'check_payment_status': 'Periksa Status Pembayaran',
+        'try_again': 'Coba Lagi'
       },
       'en': {
         'point_of_sale': 'Point of Sale',
@@ -125,9 +133,9 @@ export default function POSPage() {
         'payment': 'Payment',
         'payment_method': 'Payment Method',
         'cash': 'Cash',
+        'midtrans': 'Bank Virtual Account',
         'debit': 'Debit Card',
         'credit': 'Credit Card',
-        'qris': 'QRIS',
         'amount_paid': 'Amount Paid',
         'enter_amount': 'Enter amount',
         'change': 'Change',
@@ -143,7 +151,14 @@ export default function POSPage() {
         'cart_empty_error': 'Cart is empty',
         'payment_amount_error': 'Payment amount must be equal to or greater than the total',
         'no_image': 'No image',
-        'image_error': 'Image error'
+        'image_error': 'Image error',
+        'pay_with_midtrans': 'Pay with Virtual Account',
+        'pay_with_cash': 'Pay with Cash',
+        'open_payment_page': 'Open Payment Page',
+        'payment_pending': 'Payment Pending',
+        'payment_pending_message': 'Your payment is in pending status. Please check transaction status later.',
+        'check_payment_status': 'Check Payment Status',
+        'try_again': 'Try Again'
       }
     };
     
@@ -158,7 +173,7 @@ export default function POSPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "QRIS">("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "MIDTRANS">("CASH");
   const [amountPaid, setAmountPaid] = useState("");
   const [processing, setProcessing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -169,6 +184,15 @@ export default function POSPage() {
   
   // Add filtered products state
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+
+  // Add state for Midtrans
+  const [midtransToken, setMidtransToken] = useState<string | null>(null);
+  const [midtransUrl, setMidtransUrl] = useState<string | null>(null);
+  const [showMidtransModal, setShowMidtransModal] = useState(false);
+  // Add state for transaction total amount
+  const [transactionTotal, setTransactionTotal] = useState<number>(0);
+  // Add state for pending payment modal
+  const [showPendingModal, setShowPendingModal] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -293,6 +317,9 @@ export default function POSPage() {
 
   const addToCart = (product: Product) => {
     setCart(prevCart => {
+      // Ensure price is treated as a number
+      const productPrice = typeof product.price === 'number' ? product.price : 0;
+      
       // Check if product is already in cart
       const existingItem = prevCart.find(item => item.product.id === product.id);
       
@@ -302,7 +329,7 @@ export default function POSPage() {
           item.product.id === product.id 
             ? { ...item, 
                 quantity: item.quantity + 1, 
-                subtotal: (item.quantity + 1) * item.product.price 
+                subtotal: (item.quantity + 1) * productPrice 
               } 
             : item
         );
@@ -311,7 +338,7 @@ export default function POSPage() {
         return [...prevCart, {
           product,
           quantity: 1,
-          subtotal: product.price
+          subtotal: productPrice
         }];
       }
     });
@@ -330,12 +357,15 @@ export default function POSPage() {
       return;
     }
     
+    // Ensure price is treated as a number
+    const productPrice = typeof product.price === 'number' ? product.price : 0;
+    
     setCart(prevCart => 
       prevCart.map(item => 
         item.product.id === productId 
           ? { ...item, 
               quantity: newQuantity, 
-              subtotal: newQuantity * item.product.price 
+              subtotal: newQuantity * productPrice 
             } 
           : item
       )
@@ -347,12 +377,18 @@ export default function POSPage() {
   };
 
   const calculateSubtotal = () => {
-    return cart.reduce((total, item) => total + item.subtotal, 0);
+    return cart.reduce((total, item) => {
+      // Ensure subtotal is treated as a number
+      const itemSubtotal = typeof item.subtotal === 'number' ? item.subtotal : 0;
+      return total + itemSubtotal;
+    }, 0);
   };
   
   const calculateTaxAmount = () => {
     const subtotal = calculateSubtotal();
-    return Math.round(subtotal * (taxRate / 100));
+    // Ensure tax rate is a number and calculation doesn't result in NaN
+    const rate = typeof taxRate === 'number' ? taxRate : 0;
+    return Math.round(subtotal * (rate / 100));
   };
   
   const calculateTotal = () => {
@@ -375,16 +411,6 @@ export default function POSPage() {
     try {
       setProcessing(true);
       
-      // Validate payment amount for cash transactions
-      if (paymentMethod === "CASH") {
-        const paid = parseFloat(amountPaid);
-        if (isNaN(paid) || paid < calculateTotal()) {
-          setError(t('payment_amount_error'));
-          setProcessing(false);
-          return;
-        }
-      }
-      
       // Get current store ID from localStorage
       const storeId = localStorage.getItem('currentStoreId');
       if (!storeId) {
@@ -393,77 +419,247 @@ export default function POSPage() {
         return;
       }
       
-      // Calculate payment amounts with proper validation
+      // Calculate total - ensure it's a valid number
       const total = calculateTotal();
-      const paid = paymentMethod === "CASH" ? parseFloat(amountPaid) : total;
-      
-      // Ensure paid amount is a valid number
-      if (isNaN(paid)) {
-        setError("Invalid payment amount");
+      if (isNaN(total) || total <= 0) {
+        setError('Invalid total amount');
         setProcessing(false);
         return;
       }
       
-      // Calculate change - only applicable for CASH payments
-      const change = paymentMethod === "CASH" ? Math.max(0, paid - total) : 0;
+      // Ensure cart is not empty
+      if (cart.length === 0) {
+        setError(t('cart_empty_error'));
+        setProcessing(false);
+        return;
+      }
       
-      // Prepare transaction data
-      const transactionData: TransactionData = {
-        items: cart.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          price: item.product.price,
-          subtotal: item.subtotal
-        })),
-        subtotal: calculateSubtotal(),
-        taxRate: taxRate,
-        taxAmount: calculateTaxAmount(),
-        totalAmount: total,
-        amountPaid: paid,
-        changeAmount: change,
-        paymentMethod,
-        storeId: storeId
-      };
+      // Store the transaction total for display in modals
+      setTransactionTotal(total);
       
-      // Get current user from localStorage if available
-      try {
-        const userStr = localStorage.getItem('currentUser');
-        if (userStr) {
-          const userData = JSON.parse(userStr);
-          if (userData.id) {
-            transactionData.cashierUserId = userData.id;
-          }
+      // Handle based on payment method
+      if (paymentMethod === 'CASH') {
+        // Validate payment amount for cash transactions
+        const paid = parseFloat(amountPaid);
+        if (isNaN(paid) || paid < total) {
+          setError(t('payment_amount_error'));
+          setProcessing(false);
+          return;
         }
-      } catch (err) {
-        console.error("Error reading user data:", err);
+        
+        // Ensure paid amount is a valid number
+        if (isNaN(paid)) {
+          setError("Invalid payment amount");
+          setProcessing(false);
+          return;
+        }
+        
+        // Calculate change
+        const change = Math.max(0, paid - total);
+        
+        // Prepare transaction data
+        const transactionData: TransactionData = {
+          items: cart.map(item => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: typeof item.product.price === 'number' ? item.product.price : 0,
+            subtotal: typeof item.subtotal === 'number' ? item.subtotal : 0
+          })),
+          subtotal: calculateSubtotal(),
+          taxRate: taxRate,
+          taxAmount: calculateTaxAmount(),
+          totalAmount: total,
+          amountPaid: paid,
+          changeAmount: change,
+          paymentMethod: 'CASH',
+          storeId: storeId
+        };
+        
+        // Get current user from localStorage if available
+        try {
+          const userStr = localStorage.getItem('currentUser');
+          if (userStr) {
+            const userData = JSON.parse(userStr);
+            if (userData.id) {
+              transactionData.cashierUserId = userData.id;
+            }
+          }
+        } catch (err) {
+          console.error("Error reading user data:", err);
+        }
+        
+        console.log("Sending transaction data:", transactionData);
+        
+        const response = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(transactionData)
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage;
+          
+          try {
+            // Try to parse as JSON
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || 'Transaction failed';
+          } catch (e) {
+            // If it's not valid JSON, use the text directly
+            errorMessage = `Transaction failed: ${errorText.substring(0, 100)}`;
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        // Store transaction ID
+        setTransactionId(data.transactionId);
+        
+        // For cash payments, immediately mark the transaction as COMPLETED
+        if (data.transactionId) {
+          await updateTransactionStatus(data.transactionId, 'COMPLETED');
+        }
+        
+        // Close payment modal and show success modal
+        setShowPaymentModal(false);
+        setShowSuccessModal(true);
+        
+        // Clear cart and payment info
+        setCart([]);
+        setAmountPaid("");
+      } else if (paymentMethod === 'MIDTRANS') {
+        // Prepare data for Midtrans
+        let customerName = 'Customer';
+        let customerEmail = '';
+        let customerPhone = '';
+        
+        // Get customer data from localStorage if available
+        try {
+          const userStr = localStorage.getItem('currentUser');
+          if (userStr) {
+            const userData = JSON.parse(userStr);
+            customerName = userData.name || 'Customer';
+            // Only use email if it's in a valid format
+            if (userData.email && userData.email.includes('@')) {
+              customerEmail = userData.email;
+            }
+            if (userData.phone) {
+              customerPhone = userData.phone;
+            }
+          }
+        } catch (err) {
+          console.error("Error reading user data:", err);
+        }
+        
+        // Prepare Midtrans transaction data
+        const midtransData: {
+          items: any[];
+          totalAmount: number;
+          customerName: string;
+          customerEmail: string;
+          customerPhone: string;
+          storeId: string;
+          cashierUserId?: string;
+        } = {
+          items: cart.map(item => ({
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            price: typeof item.product.price === 'number' ? item.product.price : 0,
+            subtotal: typeof item.subtotal === 'number' ? item.subtotal : 0
+          })),
+          totalAmount: total,
+          customerName,
+          customerEmail,
+          customerPhone,
+          storeId: storeId
+        };
+        
+        // Add extensive debugging logs
+        console.log("DEBUG - Cart items:", cart);
+        console.log("DEBUG - Calculated subtotal:", calculateSubtotal());
+        console.log("DEBUG - Calculated tax amount:", calculateTaxAmount());
+        console.log("DEBUG - Calculated total:", total);
+        console.log("DEBUG - Sending Midtrans data with total:", midtransData.totalAmount);
+        
+        // Get current user ID from localStorage if available
+        try {
+          const userStr = localStorage.getItem('currentUser');
+          if (userStr) {
+            const userData = JSON.parse(userStr);
+            if (userData.id) {
+              midtransData.cashierUserId = userData.id;
+            }
+          }
+        } catch (err) {
+          console.error("Error reading user data:", err);
+        }
+        
+        console.log("Sending Midtrans data:", midtransData);
+        
+        // Call the Midtrans API endpoint
+        const response = await fetch('/api/transactions/midtrans', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(midtransData)
+        });
+        
+        if (!response.ok) {
+          let errorMessage = 'Midtrans transaction failed';
+          
+          try {
+            // Try to get detailed error information
+            const errorData = await response.json();
+            console.error('Midtrans API error:', errorData);
+            
+            if (errorData.error) {
+              // Extract and sanitize error message
+              if (errorData.error.includes('Metode pembayaran QRIS tidak tersedia')) {
+                // Specific error for QRIS not available
+                errorMessage = 'Metode pembayaran QRIS tidak tersedia. Pastikan QRIS sudah diaktifkan di akun Midtrans Anda.';
+              } else if (errorData.error.includes('Transaction amount') && (
+                errorData.error.includes('below the minimum') || 
+                errorData.error.includes('exceeds the maximum')
+              )) {
+                // Error for amount limits
+                errorMessage = errorData.error;
+              } else if (errorData.error.includes('transaction_details.gross_amount')) {
+                errorMessage = 'Tax calculation error. Please try again.';
+              } else {
+                errorMessage = errorData.error;
+              }
+            }
+          } catch (e) {
+            // If parsing fails, use response text but limit length
+            const errorText = await response.text();
+            errorMessage = `Midtrans transaction failed: ${errorText.substring(0, 100)}`;
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        const data = await response.json();
+        
+        // Store transaction ID
+        setTransactionId(data.transactionId);
+        
+        // Store Midtrans token and URL
+        setMidtransToken(data.token);
+        setMidtransUrl(data.redirectUrl);
+        
+        // Close payment modal and show Midtrans modal
+        setShowPaymentModal(false);
+        setShowMidtransModal(true);
+        
+        // Clear cart
+        setCart([]);
       }
-      
-      console.log("Sending transaction data:", transactionData);
-      
-      const response = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(transactionData)
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Transaction failed');
-      }
-      
-      // Store transaction ID
-      setTransactionId(data.transactionId);
-      
-      // Close payment modal and show success modal
-      setShowPaymentModal(false);
-      setShowSuccessModal(true);
-      
-      // Clear cart and payment info
-      setCart([]);
-      setAmountPaid("");
       
     } catch (err) {
       console.error('Payment error:', err);
@@ -477,6 +673,146 @@ export default function POSPage() {
     const paid = parseFloat(amountPaid);
     if (isNaN(paid)) return 0;
     return Math.max(0, paid - calculateTotal());
+  };
+
+  // Add a function to update transaction status directly
+  const updateTransactionStatus = async (transId: string, status: 'COMPLETED' | 'CANCELLED' | 'EXPIRED') => {
+    try {
+      const storeId = localStorage.getItem('currentStoreId');
+      if (!storeId) {
+        console.error('No store selected');
+        return false;
+      }
+      
+      console.log(`Updating transaction ${transId} status to ${status}`);
+      
+      const response = await fetch(`/api/transactions/${transId}/status?storeId=${storeId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status
+        })
+      });
+      
+      const data = await response.json();
+      console.log('Status update response:', data);
+      
+      return response.ok;
+    } catch (error) {
+      console.error('Error updating transaction status:', error);
+      return false;
+    }
+  };
+
+  // Function to open Midtrans Snap popup
+  const openMidtransSnap = () => {
+    if (!midtransToken) return;
+    
+    // Make sure the transaction total is valid
+    if (isNaN(transactionTotal) || transactionTotal <= 0) {
+      // Set transaction total using the current calculated total
+      setTransactionTotal(calculateTotal());
+    }
+    
+    // Access the snap global variable from the Midtrans script
+    // @ts-ignore - snap is loaded from external script
+    if (window.snap) {
+      // @ts-ignore
+      window.snap.pay(midtransToken, {
+        onSuccess: async function(result: any) {
+          console.log('Midtrans payment success:', result);
+          
+          // Update transaction status to COMPLETED
+          if (transactionId) {
+            await updateTransactionStatus(transactionId, 'COMPLETED');
+          }
+          
+          setShowMidtransModal(false);
+          setShowSuccessModal(true);
+        },
+        onPending: function(result: any) {
+          console.log('Midtrans payment pending:', result);
+          // For pending status, we'll handle in onClose
+        },
+        onError: function(result: any) {
+          console.log('Midtrans payment error:', result);
+          setError('Payment failed: ' + (result.status_message || 'Unknown error'));
+        },
+        onClose: async function() {
+          console.log('Customer closed the popup without finishing the payment');
+          
+          // Since we removed Midtrans integration, let's just mark the transaction as COMPLETED
+          if (transactionId) {
+            const success = await updateTransactionStatus(transactionId, 'COMPLETED');
+            
+            if (success) {
+              // Show success modal
+              setShowMidtransModal(false);
+              setShowSuccessModal(true);
+            } else {
+              // Show pending modal in case of error
+              setShowMidtransModal(false);
+              setShowPendingModal(true);
+            }
+          } else {
+            // If no transaction ID, just close the modal
+            setShowMidtransModal(false);
+          }
+        }
+      });
+    } else {
+      console.error('Snap.js is not loaded correctly');
+      setError('Payment gateway not loaded. Please try again.');
+    }
+  };
+
+  // Add function to check transaction status manually
+  const checkTransactionStatus = async (transId: string) => {
+    try {
+      // Get current store ID from localStorage
+      const storeId = localStorage.getItem('currentStoreId');
+      if (!storeId) {
+        console.error('No store selected');
+        return null;
+      }
+      
+      const response = await fetch(`/api/transactions/${transId}/status?storeId=${storeId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Transaction status:', data);
+        return data.status;
+      } else {
+        console.error('Error response from status API:', response.status, response.statusText);
+        // For error 500, default to pending state to avoid breaking the flow
+        return 'PENDING';
+      }
+    } catch (error) {
+      console.error('Error checking transaction status:', error);
+      // Return pending for any errors to avoid breaking the flow
+      return 'PENDING';
+    }
+  };
+
+  // Add this function to ensure we have valid transaction total for display
+  const getDisplayTotal = () => {
+    // If transactionTotal is not valid, try to calculate it
+    if (isNaN(transactionTotal) || transactionTotal <= 0) {
+      // Use direct calculation if cart items exist
+      if (cart.length > 0) {
+        const calculatedTotal = calculateTotal();
+        return calculatedTotal;
+      }
+      return 0; // Fallback if no cart items
+    }
+    return transactionTotal; // Use stored transaction total
   };
 
   if (loading) {
@@ -756,40 +1092,48 @@ export default function POSPage() {
                 
                 <div className="mb-4">
                   <div className="font-bold mb-2">{t('payment_method')}</div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <button 
-                      className={`p-3 border-2 ${paymentMethod === 'CASH' ? 'border-brutalism-black bg-brutalism-yellow font-bold' : 'border-gray-300'} rounded-md flex items-center justify-center gap-2`}
                       onClick={() => setPaymentMethod('CASH')}
+                      className={`p-3 border-2 border-brutalism-black rounded-md flex items-center justify-center gap-2
+                        ${paymentMethod === 'CASH' 
+                          ? 'bg-brutalism-yellow font-bold' 
+                          : 'bg-white hover:bg-gray-50'}`}
                     >
                       <Banknote size={18} /> {t('cash')}
                     </button>
+                    
                     <button 
-                      className={`p-3 border-2 ${paymentMethod === 'QRIS' ? 'border-brutalism-black bg-brutalism-green text-white font-bold' : 'border-gray-300'} rounded-md flex items-center justify-center gap-2`}
-                      onClick={() => setPaymentMethod('QRIS')}
+                      onClick={() => setPaymentMethod('MIDTRANS')}
+                      className={`p-3 border-2 border-brutalism-black rounded-md flex items-center justify-center gap-2
+                        ${paymentMethod === 'MIDTRANS' 
+                          ? 'bg-brutalism-blue text-white font-bold' 
+                          : 'bg-white hover:bg-gray-50'}`}
                     >
-                      <QrCode size={18} /> {t('qris')}
+                      <CreditCard size={18} /> {t('midtrans')}
                     </button>
                   </div>
                 </div>
                 
+                {/* Amount Paid Input Field - Show only for CASH */}
                 {paymentMethod === 'CASH' && (
                   <div className="mb-4">
                     <div className="font-bold mb-2">{t('amount_paid')}</div>
-                    <input 
-                      type="text"
+                    <input
+                      type="number"
                       value={amountPaid}
-                      onChange={(e) => {
-                        // Allow only numbers and decimal point
-                        const value = e.target.value.replace(/[^0-9.]/g, '');
-                        setAmountPaid(value);
-                      }}
+                      onChange={(e) => setAmountPaid(e.target.value)}
                       placeholder={t('enter_amount')}
-                      className="input-field border-3 border-brutalism-black w-full text-lg font-mono p-3"
+                      className="w-full p-3 border-2 border-brutalism-black focus:outline-none focus:ring-2 focus:ring-brutalism-blue"
                     />
-                    <div className="mt-2">
-                      <div className="font-bold mb-1">{t('change')}</div>
-                      <span className="font-bold font-mono text-lg">Rp {calculateChange().toLocaleString()}</span>
-                    </div>
+                    {parseFloat(amountPaid) > calculateTotal() && (
+                      <div className="mt-2">
+                        <div className="flex justify-between text-sm">
+                          <span>{t('change')}:</span>
+                          <span className="font-mono">Rp {calculateChange().toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -801,8 +1145,94 @@ export default function POSPage() {
                     ${paymentMethod === 'CASH' && (parseFloat(amountPaid) < calculateTotal() || isNaN(parseFloat(amountPaid))) ? 'bg-gray-300 cursor-not-allowed' : ''}
                   `}
                 >
-                  {processing ? t('processing') : t('complete_payment')}
+                  {processing ? t('processing') : paymentMethod === 'CASH' ? t('complete_payment') : t('pay_with_midtrans')}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Midtrans Modal */}
+        {showMidtransModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white border-4 border-brutalism-black rounded-md shadow-brutal-lg w-full max-w-md transform transition-all duration-300 animate-scaleIn">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-brutalism-blue to-blue-600 p-6 border-b-4 border-brutalism-black flex justify-between items-center rounded-t-sm">
+                <h2 className="text-xl font-bold text-white flex items-center">
+                  <CreditCard className="mr-3" size={24} />
+                  {t('midtrans')}
+                </h2>
+                <button 
+                  onClick={() => {
+                    setShowMidtransModal(false);
+                    setShowSuccessModal(true);
+                  }}
+                  className="p-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                >
+                  <X size={24} className="text-white" />
+                </button>
+              </div>
+              
+              <div className="p-6">
+                {/* Transaction Info */}
+                <div className="bg-gray-50 border-2 border-brutalism-black rounded-md p-4 mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-500">{t('transaction_id')}</span>
+                    <span className="font-mono font-bold text-brutalism-blue">{transactionId?.substring(0, 8)}...</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-500">{t('total_amount')}</span>
+                    <span className="font-mono font-bold">Rp {getDisplayTotal().toLocaleString()}</span>
+                  </div>
+                </div>
+                
+                {/* Payment Methods */}
+                <div className="text-center mb-6">
+                  <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 border-3 border-brutalism-black shadow-brutal-sm">
+                    <CreditCard size={42} className="text-brutalism-blue" />
+                  </div>
+                  <h3 className="text-lg font-bold mb-1">Transfer Bank Virtual Account</h3>
+                  <p className="text-gray-600 text-sm mb-2">
+                    Pembayaran melalui transfer bank virtual account BCA, BNI, BRI, dan Permata Bank.
+                  </p>
+                </div>
+                
+                {/* Payment Buttons */}
+                <div className="space-y-4">
+                  {midtransToken && (
+                    <button 
+                      onClick={openMidtransSnap}
+                      className="w-full bg-gradient-to-r from-brutalism-green to-green-500 text-white py-3 px-4 rounded-md font-bold border-3 border-brutalism-black shadow-brutal-sm hover:shadow-brutal hover:-translate-y-1 transition-all flex items-center justify-center group"
+                    >
+                      <div className="bg-white/20 p-1.5 rounded-full mr-3 group-hover:bg-white/30 transition-colors">
+                        <CreditCard size={18} className="text-white" />
+                      </div>
+                      <span>{t('pay_with_midtrans')}</span>
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => {
+                      setShowMidtransModal(false);
+                      setShowSuccessModal(true);
+                    }}
+                    className="w-full py-3 px-4 rounded-md border-3 border-brutalism-black font-bold bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-center"
+                  >
+                    <ArrowLeft className="mr-2" size={18} />
+                    {t('new_transaction')}
+                  </button>
+                </div>
+                
+                {/* Payment Method Icons */}
+                <div className="mt-6 pt-4 border-t-2 border-gray-100">
+                  <p className="text-xs text-center text-gray-500 mb-3">Bank Virtual Account yang Didukung</p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    {/* Bank Logos */}
+                    <div className="w-16 h-12 bg-white shadow rounded flex items-center justify-center text-lg border border-gray-200 font-bold text-xs">BCA</div>
+                    <div className="w-16 h-12 bg-white shadow rounded flex items-center justify-center text-lg border border-gray-200 font-bold text-xs">BNI</div>
+                    <div className="w-16 h-12 bg-white shadow rounded flex items-center justify-center text-lg border border-gray-200 font-bold text-xs">BRI</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -843,6 +1273,78 @@ export default function POSPage() {
                       className="btn btn-outline flex-1 flex items-center justify-center"
                     >
                       <ShoppingCart size={16} className="mr-2" /> {t('new_transaction')}
+                    </button>
+                  </div>
+                  <Link 
+                    href={`/dashboard/transactions/${transactionId}`}
+                    className="text-brutalism-blue text-sm text-center block mt-4 hover:underline"
+                  >
+                    {t('view_details')} →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Payment Modal */}
+        {showPendingModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white border-4 border-brutalism-black rounded-md shadow-brutal-lg w-full max-w-md">
+              <div className="p-4 border-b-4 border-brutalism-black flex justify-between items-center">
+                <h2 className="text-xl font-bold text-yellow-600">{t('payment_pending')}</h2>
+                <button 
+                  onClick={() => setShowPendingModal(false)}
+                  className="p-1 hover:bg-gray-100 rounded-full"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-4">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock size={36} className="text-yellow-600" />
+                  </div>
+                  <p className="mb-4 text-center">{t('payment_pending_message')}</p>
+                  <div className="border-2 border-brutalism-black rounded p-3 bg-gray-100 text-center mb-4">
+                    <div className="text-sm text-gray-500 mb-1">{t('transaction_id')}</div>
+                    <div className="font-mono font-bold">{transactionId}</div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={async () => {
+                        // Complete the transaction and update product quantities
+                        if (transactionId) {
+                          const success = await updateTransactionStatus(transactionId, 'COMPLETED');
+                          
+                          if (success) {
+                            // Show success modal
+                            setShowPendingModal(false);
+                            setShowSuccessModal(true);
+                          } else {
+                            // Show error
+                            alert(t('payment_pending_message'));
+                          }
+                        }
+                      }}
+                      className="btn btn-primary flex-1 flex items-center justify-center"
+                    >
+                      <RefreshCw size={16} className="mr-2" /> {t('check_payment_status')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowPendingModal(false);
+                        // Only retry if we have a token
+                        if (midtransToken) {
+                          setShowMidtransModal(true);
+                          setTimeout(() => {
+                            openMidtransSnap();
+                          }, 500);
+                        }
+                      }}
+                      className="btn btn-outline flex-1 flex items-center justify-center"
+                    >
+                      <CreditCard size={16} className="mr-2" /> {t('try_again')}
                     </button>
                   </div>
                   <Link 

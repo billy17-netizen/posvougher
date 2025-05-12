@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
+import Script from 'next/script';
 import { 
   ArrowLeft, 
   Check, 
@@ -17,11 +18,15 @@ import {
   ShoppingBag, 
   DollarSign, 
   Package,
-  ShoppingCart
+  ShoppingCart,
+  RefreshCw,
+  Banknote,
+  QrCode
 } from "lucide-react";
 import InvoiceGenerator from "@/components/InvoiceGenerator";
 import { useSettings } from "@/contexts/SettingsContext";
 import { use } from "react";
+import { midtransConfig } from '@/lib/config/midtrans';
 
 interface User {
   id: string;
@@ -50,8 +55,8 @@ interface Transaction {
   totalAmount: number;
   amountPaid: number;
   changeAmount: number;
-  paymentMethod: "CASH" | "DEBIT" | "CREDIT" | "QRIS";
-  status: "PENDING" | "COMPLETED" | "CANCELLED";
+  paymentMethod: "CASH" | "DEBIT" | "CREDIT" | "QRIS" | "MIDTRANS";
+  status: "PENDING" | "COMPLETED" | "CANCELLED" | "EXPIRED";
   createdAt: string;
   cashierName: string;
   items: TransactionItem[];
@@ -67,6 +72,15 @@ export default function TransactionDetailPage({
   const { language } = settings;
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const componentRef = useRef<HTMLDivElement>(null);
+  
+  // Add Midtrans state variables
+  const [midtransToken, setMidtransToken] = useState<string | null>(null);
+  const [midtransUrl, setMidtransUrl] = useState<string | null>(null);
+  const [showMidtransModal, setShowMidtransModal] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const [midtransLoading, setMidtransLoading] = useState(false);
   
   // Translation function
   const t = (key: string) => {
@@ -94,7 +108,24 @@ export default function TransactionDetailPage({
         'amount_paid': 'Jumlah Bayar',
         'change_amount': 'Kembalian',
         'status_updated': 'Status transaksi berhasil diperbarui',
-        'generating_invoice': 'Membuat Faktur...'
+        'generating_invoice': 'Membuat Faktur...',
+        'midtrans': 'Transfer Bank Virtual Account',
+        'pay_with_midtrans': 'Bayar dengan QRIS',
+        'payment_pending': 'Pembayaran QRIS Tertunda',
+        'payment_pending_message': 'Pembayaran QRIS Anda dalam status tertunda. Silakan periksa status transaksi nanti.',
+        'check_payment_status': 'Periksa Status Pembayaran',
+        'try_again': 'Coba Lagi',
+        'new_transaction': 'Transaksi Baru',
+        'payment_successful': 'Pembayaran Berhasil!',
+        'transaction_completed': 'Transaksi telah berhasil diselesaikan',
+        'transaction_expired': 'QRIS Kadaluarsa',
+        'transaction_expired_message': 'Kode QRIS telah kadaluarsa. Anda dapat membuat kode QRIS baru.',
+        'refresh_payment': 'Perbarui QRIS',
+        'payment_expired': 'QRIS Kadaluarsa',
+        'create_new_session': 'Buat QRIS Baru',
+        'payment_waiting': 'Pembayaran Menunggu',
+        'payment_waiting_message': 'Transaksi ini menunggu pembayaran. Klik tombol untuk menyelesaikan pembayaran.',
+        'pay_now': 'Bayar Sekarang'
       },
       'en': {
         'transaction_detail': 'Transaction Detail',
@@ -117,7 +148,24 @@ export default function TransactionDetailPage({
         'amount_paid': 'Amount Paid',
         'change_amount': 'Change',
         'status_updated': 'Transaction status updated successfully',
-        'generating_invoice': 'Generating Invoice...'
+        'generating_invoice': 'Generating Invoice...',
+        'midtrans': 'Bank Virtual Account',
+        'pay_with_midtrans': 'Pay with QRIS',
+        'payment_pending': 'QRIS Payment Pending',
+        'payment_pending_message': 'Your QRIS payment is in pending status. Please check transaction status later.',
+        'check_payment_status': 'Check Payment Status',
+        'try_again': 'Try Again',
+        'new_transaction': 'New Transaction',
+        'payment_successful': 'Payment Successful!',
+        'transaction_completed': 'The transaction has been successfully completed',
+        'transaction_expired': 'QRIS Expired',
+        'transaction_expired_message': 'QRIS code has expired. You can create a new QRIS code.',
+        'refresh_payment': 'Refresh QRIS',
+        'payment_expired': 'QRIS Expired',
+        'create_new_session': 'Create New QRIS',
+        'payment_waiting': 'Payment Waiting',
+        'payment_waiting_message': 'This transaction is waiting for payment. Click the button to complete the payment.',
+        'pay_now': 'Pay Now'
       }
     };
     
@@ -203,13 +251,15 @@ export default function TransactionDetailPage({
   const getPaymentMethodLabel = (method: string) => {
     switch (method) {
       case "CASH":
-        return "Tunai";
+        return t("cash");
       case "DEBIT":
-        return "Kartu Debit";
+        return "Debit Card";
       case "CREDIT":
-        return "Kartu Kredit";
+        return "Credit Card";
       case "QRIS":
         return "QRIS";
+      case "MIDTRANS":
+        return "Virtual Account";
       default:
         return method;
     }
@@ -218,15 +268,17 @@ export default function TransactionDetailPage({
   const getPaymentMethodIcon = (method: string) => {
     switch (method) {
       case "CASH":
-        return "💵";
+        return <Banknote className="w-5 h-5 text-brutalism-green" />;
       case "DEBIT":
-        return "💳";
+        return <CreditCard className="w-5 h-5 text-brutalism-blue" />;
       case "CREDIT":
-        return "💳";
+        return <CreditCard className="w-5 h-5 text-brutalism-blue" />;
       case "QRIS":
-        return "📱";
+        return <QrCode className="w-5 h-5 text-purple-500" />;
+      case "MIDTRANS":
+        return <CreditCard className="w-5 h-5 text-brutalism-blue" />;
       default:
-        return "💰";
+        return <CreditCard className="w-5 h-5 text-brutalism-blue" />;
     }
   };
 
@@ -239,8 +291,201 @@ export default function TransactionDetailPage({
     }
   };
 
+  // Add function to check transaction status manually with better error handling
+  const checkTransactionStatus = async (transId: string) => {
+    try {
+      // Get current store ID from localStorage
+      const storeId = localStorage.getItem('currentStoreId');
+      if (!storeId) {
+        console.error('No store selected');
+        return null;
+      }
+      
+      const response = await fetch(`/api/transactions/${transId}/status?storeId=${storeId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Transaction status:', data);
+        
+        // Check if the transaction is expired
+        if (data.status === 'EXPIRED') {
+          setShowExpiredModal(true);
+        }
+        
+        return data.status;
+      } else {
+        console.error('Error response from status API:', response.status, response.statusText);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error checking transaction status:', error);
+      
+      // If there's a network error, just close modals and show a generic error
+      setShowMidtransModal(false);
+      setShowPendingModal(false);
+      
+      // Show a generic error message
+      setError('Network error. Please check your connection and try again.');
+      
+      return null;
+    }
+  };
+
+  // Function to handle refreshing expired payments
+  const handleRefreshPayment = async () => {
+    setShowExpiredModal(false);
+    setMidtransLoading(true);
+    
+    try {
+      console.log("Refreshing payment for transaction:", transactionId);
+      
+      // Get a new Midtrans token
+      const token = await getMidtransToken(transactionId);
+      
+      // Show the Midtrans modal again
+      setShowMidtransModal(true);
+      setTimeout(() => {
+        openMidtransSnap();
+      }, 500);
+    } catch (error) {
+      console.error("Error refreshing payment:", error);
+      setError("Failed to refresh payment session. Please try again.");
+      // Re-open expired modal if there was an error
+      setShowExpiredModal(true);
+    } finally {
+      setMidtransLoading(false);
+    }
+  };
+
+  // Function to get Midtrans token for an existing transaction
+  const getMidtransToken = async (transId: string) => {
+    try {
+      setMidtransLoading(true);
+      const response = await fetch(`/api/transactions/${transId}/midtrans-token`);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || `Error: ${response.status} ${response.statusText}`;
+        console.error("Error response from Midtrans token API:", errorData);
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      console.log("Successfully retrieved Midtrans token:", data);
+      
+      // Check if we got a valid token
+      if (!data.token) {
+        throw new Error("No valid payment token received");
+      }
+      
+      setMidtransToken(data.token);
+      setMidtransUrl(data.redirectUrl);
+      return data.token;
+    } catch (error) {
+      console.error("Error getting Midtrans token:", error);
+      setError(error instanceof Error ? error.message : "Failed to get payment token");
+      throw error;
+    } finally {
+      setMidtransLoading(false);
+    }
+  };
+
+  // Update the openMidtransSnap function to automatically refresh transaction data
+  const openMidtransSnap = () => {
+    if (!midtransToken) return;
+    
+    // Access the snap global variable from the Midtrans script
+    // @ts-ignore - snap is loaded from external script
+    if (window.snap) {
+      try {
+        // @ts-ignore
+        window.snap.pay(midtransToken, {
+          onSuccess: async function(result: any) {
+            console.log('Midtrans payment success:', result);
+            
+            // Manually check and update transaction status
+            if (transactionId) {
+              await checkTransactionStatus(transactionId);
+            }
+            
+            // Refresh transaction data to show updated status
+            fetchTransactionDetail();
+            
+            setShowMidtransModal(false);
+            setShowSuccessModal(true);
+          },
+          onPending: function(result: any) {
+            console.log('Midtrans payment pending:', result);
+            // Remain on the Midtrans modal
+          },
+          onError: function(result: any) {
+            console.log('Midtrans payment error:', result);
+            // Handle token expired error specifically
+            if (result.status_code === '400' && 
+                result.status_message && 
+                (result.status_message.includes('token is expired') || 
+                 result.status_message.includes('invalid token'))) {
+              // Show expired modal
+              setShowMidtransModal(false);
+              setShowExpiredModal(true);
+            } else {
+              setError('Payment failed: ' + (result.status_message || 'Unknown error'));
+            }
+          },
+          onClose: async function() {
+            console.log('Customer closed the popup without finishing the payment');
+            
+            // Check status on close as well, as payment might be completed or pending
+            if (transactionId) {
+              const status = await checkTransactionStatus(transactionId);
+              // Refresh transaction data in any case
+              fetchTransactionDetail();
+              
+              if (status === 'COMPLETED') {
+                // If completed, show success modal
+                setShowMidtransModal(false);
+                setShowSuccessModal(true);
+              } else if (status === 'EXPIRED') {
+                // If expired, the expired modal will be shown by checkTransactionStatus
+                setShowMidtransModal(false);
+              } else {
+                // If pending or other status, show the pending modal
+                setShowMidtransModal(false);
+                setShowPendingModal(true);
+              }
+            } else {
+              // If no transaction ID, just close the modal
+              setShowMidtransModal(false);
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Error opening Midtrans Snap:', err);
+        setError('Error opening payment window. Please try again.');
+        setShowMidtransModal(false);
+      }
+    } else {
+      console.error('Snap.js is not loaded correctly');
+      setError('Payment gateway not loaded. Please try again.');
+    }
+  };
+
   return (
     <div className="dashboard-container">
+      {/* Midtrans Script */}
+      <Script
+        src={process.env.NODE_ENV === 'production' 
+          ? "https://app.midtrans.com/snap/snap.js" 
+          : "https://app.sandbox.midtrans.com/snap/snap.js"}
+        data-client-key={midtransConfig.clientKey}
+        strategy="afterInteractive"
+      />
+
       <div className="dashboard-header">
         <div className="flex items-center">
           <button
@@ -262,16 +507,58 @@ export default function TransactionDetailPage({
           </div>
         </div>
         <div className="flex space-x-2">
+          {/* Add refresh button */}
+          <button
+            onClick={() => {
+              fetchTransactionDetail();
+            }}
+            className="btn btn-outline"
+            title="Refresh transaction details"
+          >
+            <RefreshCw size={16} className="mr-2" /> Refresh
+          </button>
+          
           {transaction?.status === "PENDING" && (
             <>
               <button
                 onClick={async () => {
                   if (confirm(t('confirm_complete'))) {
                     try {
+                      // Get current store ID from localStorage
+                      const storeId = localStorage.getItem('currentStoreId');
+                      if (!storeId) {
+                        console.error('No store selected');
+                        return;
+                      }
+                      
+                      // Check if this is a Midtrans transaction
+                      if (transaction?.paymentMethod === 'MIDTRANS') {
+                        try {
+                          // Get Midtrans token
+                          const token = await getMidtransToken(transactionId);
+                          
+                          // Show Midtrans modal
+                          setShowMidtransModal(true);
+                          setTimeout(() => {
+                            openMidtransSnap();
+                          }, 500);
+                          
+                          return; // Exit early - status will be updated by the payment callback
+                        } catch (err) {
+                          console.error("Error getting Midtrans token:", err);
+                          alert("Failed to get Midtrans token. Please try again.");
+                          return;
+                        }
+                      }
+                      
+                      // For non-Midtrans transactions, just update the status
                       const response = await fetch(`/api/transactions/${transactionId}/status`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ status: "COMPLETED" }),
+                        body: JSON.stringify({ 
+                          status: "COMPLETED",
+                          storeId: storeId
+                        }),
                       });
 
                       if (!response.ok) {
@@ -291,14 +578,25 @@ export default function TransactionDetailPage({
               >
                 <Check size={16} className="mr-2" /> {t('complete_transaction')}
               </button>
+              
               <button
                 onClick={async () => {
                   if (confirm(t('confirm_cancel'))) {
                     try {
+                      // Get current store ID from localStorage
+                      const storeId = localStorage.getItem('currentStoreId');
+                      if (!storeId) {
+                        console.error('No store selected');
+                        return;
+                      }
+                      
                       const response = await fetch(`/api/transactions/${transactionId}/status`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ status: "CANCELLED" }),
+                        body: JSON.stringify({ 
+                          status: "CANCELLED",
+                          storeId: storeId
+                        }),
                       });
 
                       if (!response.ok) {
@@ -380,149 +678,135 @@ export default function TransactionDetailPage({
               </div>
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-4">{t('transaction_details')}</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-yellow mr-3">
-                      <Calendar size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t('date')}</p>
-                      <p className="font-medium">
-                        {transaction ? formatDate(transaction.createdAt) : "-"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-yellow mr-3">
-                      <User size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t('cashier')}</p>
-                      <p className="font-medium">
-                        {transaction ? transaction.cashierName : "-"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-yellow mr-3">
-                      <CreditCard size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t('payment_method')}</p>
-                      <p className="font-medium">
-                        {transaction ? (
-                          <span className="flex items-center">
-                            {getPaymentMethodIcon(transaction.paymentMethod)}{" "}
-                            {getPaymentMethodLabel(transaction.paymentMethod)}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-yellow mr-3">
-                      <Package size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t('status')}</p>
-                      <p className="font-medium">
-                        {transaction ? (
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getStatusColor(
-                              transaction.status
-                            )}`}
-                          >
-                            {getStatusIcon(transaction.status)}
-                            {transaction.status}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-yellow mr-3">
-                      <ShoppingBag size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t('items')}</p>
-                      <p className="font-medium">
-                        {transaction ? transaction.items.length : 0}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-yellow mr-3">
-                      <DollarSign size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t('total')}</p>
-                      <p className="font-medium">
-                        {transaction
-                          ? new Intl.NumberFormat("id-ID", {
-                              style: "currency",
-                              currency: "IDR",
-                              minimumFractionDigits: 0,
-                            }).format(transaction.totalAmount)
-                          : "-"}
-                      </p>
-                    </div>
-                  </div>
+            {/* Transaction details card */}
+            <div className="brutalism-card mb-6">
+              <div className="card-header flex justify-between items-center">
+                <h2 className="font-bold">{t('transaction_details')}</h2>
+                <div className={`status-badge ${getStatusBadgeClass(transaction.status)}`}>
+                  {getStatusIcon(transaction.status)}
+                  <span>{transaction.status}</span>
                 </div>
               </div>
-              
-              {/* Add payment amount and change information */}
-              {transaction && (transaction.amountPaid > 0 || transaction.changeAmount > 0) && (
-                <div className="mt-6 p-4 border-3 border-brutalism-black bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-green text-white mr-3">
-                        <DollarSign size={16} />
+              <div className="card-content p-6">
+                {/* Transaction info grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <div className="w-10 h-10 rounded-full bg-brutalism-blue/10 flex items-center justify-center mr-3">
+                        <Calendar className="w-5 h-5 text-brutalism-blue" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">{t('amount_paid')}</p>
-                        <p className="font-medium">
-                          {new Intl.NumberFormat("id-ID", {
-                            style: "currency",
-                            currency: "IDR",
-                            minimumFractionDigits: 0,
-                          }).format(transaction.amountPaid)}
-                        </p>
+                        <h3 className="text-sm text-gray-500">{t('date')}</h3>
+                        <p className="font-medium">{formatDate(transaction.createdAt)}</p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-brutalism-blue text-white mr-3">
-                        <DollarSign size={16} />
+                    <div className="flex items-start">
+                      <div className="w-10 h-10 rounded-full bg-brutalism-yellow/10 flex items-center justify-center mr-3">
+                        <User className="w-5 h-5 text-brutalism-yellow" />
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">{t('change_amount')}</p>
-                        <p className="font-medium">
-                          {new Intl.NumberFormat("id-ID", {
-                            style: "currency",
-                            currency: "IDR",
-                            minimumFractionDigits: 0,
-                          }).format(transaction.changeAmount)}
-                        </p>
+                        <h3 className="text-sm text-gray-500">{t('cashier')}</h3>
+                        <p className="font-medium">{transaction.cashierName}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="w-10 h-10 rounded-full bg-brutalism-green/10 flex items-center justify-center mr-3">
+                        {getPaymentMethodIcon(transaction.paymentMethod)}
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-gray-500">{t('payment_method')}</h3>
+                        <p className="font-medium">{getPaymentMethodLabel(transaction.paymentMethod)}</p>
                       </div>
                     </div>
                   </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-start">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mr-3">
+                        <Package className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-gray-500">{t('items')}</h3>
+                        <p className="font-medium">{transaction.items.length} items</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start">
+                      <div className="w-10 h-10 rounded-full bg-brutalism-blue/10 flex items-center justify-center mr-3">
+                        <DollarSign className="w-5 h-5 text-brutalism-blue" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm text-gray-500">{t('total')}</h3>
+                        <p className="font-medium font-mono">Rp {transaction.totalAmount.toLocaleString()}</p>
+                      </div>
+                    </div>
+                    
+                    {transaction.paymentMethod === 'CASH' && (
+                      <>
+                        <div className="flex items-start">
+                          <div className="w-10 h-10 rounded-full bg-brutalism-green/10 flex items-center justify-center mr-3">
+                            <DollarSign className="w-5 h-5 text-brutalism-green" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm text-gray-500">{t('amount_paid')}</h3>
+                            <p className="font-medium font-mono">Rp {transaction.amountPaid.toLocaleString()}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start">
+                          <div className="w-10 h-10 rounded-full bg-brutalism-yellow/10 flex items-center justify-center mr-3">
+                            <DollarSign className="w-5 h-5 text-brutalism-yellow" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm text-gray-500">{t('change_amount')}</h3>
+                            <p className="font-medium font-mono">Rp {transaction.changeAmount.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-              )}
+                
+                {/* Payment action section for pending Midtrans transactions */}
+                {transaction.status === 'PENDING' && transaction.paymentMethod === 'MIDTRANS' && (
+                  <div className="mt-6 pt-4 border-t-2 border-gray-100">
+                    <div className="bg-amber-50 border-2 border-amber-100 rounded-md p-4 mb-4">
+                      <div className="flex items-start">
+                        <Clock className="text-amber-500 mr-2 mt-1 flex-shrink-0" size={20} />
+                        <div>
+                          <h3 className="font-medium text-amber-800">{t('payment_waiting')}</h3>
+                          <p className="text-sm text-amber-700">
+                            {t('payment_waiting_message')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={async () => {
+                        try {
+                          // Get Midtrans token
+                          const token = await getMidtransToken(transactionId);
+                          
+                          // Show Midtrans modal
+                          setShowMidtransModal(true);
+                          setTimeout(() => {
+                            openMidtransSnap();
+                          }, 500);
+                        } catch (err) {
+                          console.error("Error getting Midtrans token:", err);
+                          alert("Failed to get payment token. Please try again.");
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-brutalism-blue to-blue-600 text-white py-3 px-4 rounded-md font-bold border-3 border-brutalism-black shadow-brutal-sm hover:shadow-brutal hover:-translate-y-1 transition-all flex items-center justify-center mt-4"
+                    >
+                      <CreditCard size={18} className="mr-2" /> {t('pay_now')}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -701,6 +985,280 @@ export default function TransactionDetailPage({
           </div>
         )}
       </div>
+
+      {/* Midtrans Modal */}
+      {showMidtransModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border-4 border-brutalism-black rounded-md shadow-brutal-lg w-full max-w-md transform transition-all duration-300 animate-scaleIn">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-brutalism-blue to-blue-600 p-6 border-b-4 border-brutalism-black flex justify-between items-center rounded-t-sm">
+              <h2 className="text-xl font-bold text-white flex items-center">
+                <CreditCard className="mr-3" size={24} />
+                QRIS Payment
+              </h2>
+              <button 
+                onClick={() => {
+                  setShowMidtransModal(false);
+                }}
+                className="p-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <X size={24} className="text-white" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {/* Transaction Info */}
+              <div className="bg-gray-50 border-2 border-brutalism-black rounded-md p-4 mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-500">{t('transaction_id')}</span>
+                  <span className="font-mono font-bold text-brutalism-blue">{transactionId?.substring(0, 8)}...</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-500">{t('total_amount')}</span>
+                  <span className="font-mono font-bold">
+                    {transaction && `Rp ${transaction.totalAmount.toLocaleString()}`}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Payment Methods */}
+              <div className="text-center mb-6">
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4 border-3 border-brutalism-black shadow-brutal-sm">
+                  <CreditCard size={42} className="text-brutalism-blue" />
+                </div>
+                <h3 className="text-lg font-bold mb-1">QRIS Payment</h3>
+                <p className="text-gray-600 text-sm">
+                  Scan kode QRIS dengan aplikasi e-wallet atau mobile banking Anda untuk menyelesaikan pembayaran.
+                </p>
+              </div>
+              
+              {/* Payment Buttons */}
+              <div className="space-y-4">
+                {midtransToken && (
+                  <button 
+                    onClick={openMidtransSnap}
+                    className="w-full bg-gradient-to-r from-brutalism-green to-green-500 text-white py-3 px-4 rounded-md font-bold border-3 border-brutalism-black shadow-brutal-sm hover:shadow-brutal hover:-translate-y-1 transition-all flex items-center justify-center group"
+                  >
+                    <div className="bg-white/20 p-1.5 rounded-full mr-3 group-hover:bg-white/30 transition-colors">
+                      <CreditCard size={18} className="text-white" />
+                    </div>
+                    <span>{t('pay_with_midtrans')}</span>
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => {
+                    setShowMidtransModal(false);
+                  }}
+                  className="w-full py-3 px-4 rounded-md border-3 border-brutalism-black font-bold bg-gray-50 hover:bg-gray-100 transition-colors flex items-center justify-center"
+                >
+                  <ArrowLeft className="mr-2" size={18} />
+                  {t('back')}
+                </button>
+              </div>
+              
+              {/* Payment Method Icons */}
+              <div className="mt-6 pt-4 border-t-2 border-gray-100">
+                <p className="text-xs text-center text-gray-500 mb-3">Metode Pembayaran</p>
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center text-lg">
+                    <img src="/images/qris-logo.png" alt="QRIS" className="h-12 w-auto" 
+                      onError={(e) => {
+                        // Safer error handling that checks if parentElement exists
+                        if (e.currentTarget && e.currentTarget.parentElement) {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '';
+                          e.currentTarget.parentElement.textContent = '📱';
+                        }
+                      }} 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Pending Payment Modal */}
+      {showPendingModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-brutalism-black rounded-md shadow-brutal-lg w-full max-w-md">
+            <div className="p-4 border-b-4 border-brutalism-black flex justify-between items-center">
+              <h2 className="text-xl font-bold text-yellow-600">{t('payment_pending')}</h2>
+              <button 
+                onClick={() => setShowPendingModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock size={36} className="text-yellow-600" />
+                </div>
+                <p className="mb-4 text-center">{t('payment_pending_message')}</p>
+                <div className="border-2 border-brutalism-black rounded p-3 bg-gray-100 text-center mb-4">
+                  <div className="text-sm text-gray-500 mb-1">{t('transaction_id')}</div>
+                  <div className="font-mono font-bold">{transactionId}</div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={async () => {
+                      // Check the current status
+                      if (transactionId) {
+                        const status = await checkTransactionStatus(transactionId);
+                        if (status === 'COMPLETED') {
+                          setShowPendingModal(false);
+                          setShowSuccessModal(true);
+                        } else {
+                          // Still pending or other status
+                          alert(t('payment_pending_message'));
+                        }
+                      }
+                    }}
+                    className="btn btn-primary flex-1 flex items-center justify-center"
+                  >
+                    <RefreshCw size={16} className="mr-2" /> {t('check_payment_status')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPendingModal(false);
+                      // Only retry if we have a token
+                      if (midtransToken) {
+                        setShowMidtransModal(true);
+                        setTimeout(() => {
+                          openMidtransSnap();
+                        }, 500);
+                      }
+                    }}
+                    className="btn btn-outline flex-1 flex items-center justify-center"
+                  >
+                    <CreditCard size={16} className="mr-2" /> {t('try_again')}
+                  </button>
+                </div>
+                <Link 
+                  href={`/dashboard/transactions/${transactionId}`}
+                  className="text-brutalism-blue text-sm text-center block mt-4 hover:underline"
+                >
+                  {t('view_details')} →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border-4 border-brutalism-black rounded-md shadow-brutal-lg w-full max-w-md">
+            <div className="p-4 border-b-4 border-brutalism-black flex justify-between items-center">
+              <h2 className="text-xl font-bold text-green-600">{t('payment_successful')}</h2>
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Check size={36} className="text-green-600" />
+                </div>
+                <p className="mb-4 text-center">{t('transaction_completed')}</p>
+                <div className="border-2 border-brutalism-black rounded p-3 bg-gray-100 text-center mb-4">
+                  <div className="text-sm text-gray-500 mb-1">{t('transaction_id')}</div>
+                  <div className="font-mono font-bold">{transactionId}</div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Link 
+                    href={`/dashboard/transactions/${transactionId}/invoice`}
+                    className="btn btn-primary flex-1 flex items-center justify-center"
+                  >
+                    <FileText size={16} className="mr-2" /> {t('print_invoice')}
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setShowSuccessModal(false);
+                      fetchTransactionDetail(); // Refresh to get new status
+                    }}
+                    className="btn btn-outline flex-1 flex items-center justify-center"
+                  >
+                    <ShoppingCart size={16} className="mr-2" /> {t('back')}
+                  </button>
+                </div>
+                <Link 
+                  href={`/dashboard/transactions/${transactionId}`}
+                  className="text-brutalism-blue text-sm text-center block mt-4 hover:underline"
+                >
+                  {t('view_details')} →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Expired Modal */}
+      {showExpiredModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white border-4 border-brutalism-black rounded-md shadow-brutal-lg w-full max-w-md transform transition-all duration-300 animate-scaleIn">
+            <div className="p-4 border-b-4 border-brutalism-black flex justify-between items-center bg-red-100">
+              <h2 className="text-xl font-bold text-red-600">{t('payment_expired')}</h2>
+              <button 
+                onClick={() => setShowExpiredModal(false)}
+                className="p-1 hover:bg-red-200 rounded-full"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-4">
+              <div className="text-center">
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Clock size={36} className="text-red-600" />
+                </div>
+                <p className="mb-4 text-center">{t('transaction_expired_message')}</p>
+                <div className="border-2 border-brutalism-black rounded p-3 bg-gray-100 text-center mb-4">
+                  <div className="text-sm text-gray-500 mb-1">{t('transaction_id')}</div>
+                  <div className="font-mono font-bold">{transactionId}</div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={handleRefreshPayment}
+                    disabled={midtransLoading}
+                    className="btn btn-primary flex-1 flex items-center justify-center"
+                  >
+                    {midtransLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        {t('loading')}...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={16} className="mr-2" /> {t('create_new_session')}
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowExpiredModal(false)}
+                    className="btn btn-outline flex-1 flex items-center justify-center"
+                  >
+                    <ArrowLeft size={16} className="mr-2" /> {t('back')}
+                  </button>
+                </div>
+                {error && (
+                  <div className="mt-4 p-2 bg-red-100 border-2 border-red-600 text-red-600 rounded text-sm">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

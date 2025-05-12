@@ -13,7 +13,7 @@ interface TransactionData {
   totalAmount: number;
   amountPaid: number;
   changeAmount: number;
-  paymentMethod: 'CASH' | 'DEBIT' | 'CREDIT' | 'QRIS';
+  paymentMethod: 'CASH' | 'QRIS' | 'DEBIT' | 'CREDIT' | 'MIDTRANS';
   cashierUserId?: string; // Make this optional as we'll have a fallback
   storeId: string;
 }
@@ -77,7 +77,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { items, totalAmount, amountPaid, changeAmount, paymentMethod, cashierUserId, storeId } = body as TransactionData;
+    const { 
+      items, 
+      totalAmount, 
+      amountPaid, 
+      changeAmount, 
+      paymentMethod, 
+      cashierUserId, 
+      storeId
+    } = body as TransactionData;
     
     // Validate request
     if (!items || !items.length || !totalAmount || !paymentMethod) {
@@ -103,22 +111,23 @@ export async function POST(request: Request) {
       );
     }
     
-    // Validate payment data
-    if (amountPaid < totalAmount) {
+    // Validate payment data - special handling for QRIS
+    if (paymentMethod === 'CASH' && amountPaid < totalAmount) {
       return NextResponse.json(
         { error: "Amount paid cannot be less than total amount" },
         { status: 400 }
       );
     }
     
+    // For QRIS payments, ensure amount paid is equal to total amount
+    const finalAmountPaid = paymentMethod === 'QRIS' ? totalAmount : amountPaid;
+    
     // Verify the change amount calculation is correct
-    const expectedChange = amountPaid - totalAmount;
-    if (Math.abs(expectedChange - changeAmount) > 1) { // Allow for small rounding errors
-      console.warn(`Change amount mismatch: expected ${expectedChange}, got ${changeAmount}`);
-      // Auto-correct the change amount
-      const correctedChangeAmount = Math.max(0, expectedChange);
-      console.log(`Auto-correcting change amount to: ${correctedChangeAmount}`);
+    let finalChangeAmount = 0;
+    if (paymentMethod === 'CASH') {
+      finalChangeAmount = Math.max(0, finalAmountPaid - totalAmount);
     }
+    // QRIS payments have no change
     
     const pool = getPool();
     const now = new Date();
@@ -133,12 +142,12 @@ export async function POST(request: Request) {
         'INSERT INTO "Transaction" (id, "totalAmount", "amountPaid", "changeAmount", "paymentMethod", "cashierUserId", "storeId", status, "createdAt", "updatedAt") VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
         [
           totalAmount,
-          amountPaid, // Use the validated amount
-          Math.max(0, amountPaid - totalAmount), // Calculate change amount directly to ensure accuracy
+          finalAmountPaid, // Use the validated amount
+          finalChangeAmount, // Use the calculated change amount
           paymentMethod,
           cashierUserId,
           storeId,
-          'COMPLETED', // Status
+          'PENDING', // Set initial status to PENDING for all transactions
           now,
           now
         ]
@@ -146,7 +155,8 @@ export async function POST(request: Request) {
       
       const transactionId = transactionResult.rows[0].id;
       
-      // 2. Create transaction items and update product stock
+      // 2. Create transaction items WITHOUT updating product stock
+      // (stock will be updated when transaction status changes to COMPLETED)
       for (const item of items) {
         // Add transaction item
         await client.query(
@@ -162,11 +172,7 @@ export async function POST(request: Request) {
           ]
         );
         
-        // Update product stock (ensure we're only updating products that belong to this store)
-        await client.query(
-          'UPDATE "Product" SET stock = stock - $1, "updatedAt" = $2 WHERE id = $3 AND "storeId" = $4',
-          [item.quantity, now, item.productId, storeId]
-        );
+        // Remove automatic stock update - will be done when status is COMPLETED
       }
       
       // Commit the transaction

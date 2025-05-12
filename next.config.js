@@ -9,7 +9,11 @@ const nextConfig = {
   },
   */
   images: {
-    domains: ['images.unsplash.com', 'plus.unsplash.com', 'via.placeholder.com'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'plus.unsplash.com' },
+      { protocol: 'https', hostname: 'via.placeholder.com' }
+    ],
   },
   // Disable filesystem cache to avoid Windows permission errors
   experimental: {

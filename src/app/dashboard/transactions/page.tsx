@@ -33,8 +33,8 @@ interface User {
 interface Transaction {
   id: string;
   totalAmount: number;
-  paymentMethod: "CASH" | "DEBIT" | "CREDIT" | "QRIS";
-  status: "PENDING" | "COMPLETED" | "CANCELLED";
+  paymentMethod: "CASH" | "DEBIT" | "CREDIT" | "QRIS" | "MIDTRANS";
+  status: "PENDING" | "COMPLETED" | "CANCELLED" | "EXPIRED";
   createdAt: string;
   cashierUserId: string;
   cashierName: string;
@@ -264,6 +264,8 @@ export default function TransactionsPage() {
         return "bg-yellow-100 text-yellow-800 border-2 border-yellow-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800 border-2 border-red-800";
+      case "EXPIRED":
+        return "bg-gray-100 text-gray-800 border-2 border-gray-800";
       default:
         return "bg-gray-100 text-gray-800 border-2 border-gray-500";
     }
@@ -277,6 +279,8 @@ export default function TransactionsPage() {
         return <Clock size={16} className="mr-1" />;
       case "CANCELLED":
         return <X size={16} className="mr-1" />;
+      case "EXPIRED":
+        return <Clock size={16} className="mr-1" />;
       default:
         return null;
     }
@@ -292,6 +296,8 @@ export default function TransactionsPage() {
         return t('credit_card');
       case "QRIS":
         return "QRIS";
+      case "MIDTRANS":
+        return "Midtrans";
       default:
         return method;
     }
@@ -307,6 +313,8 @@ export default function TransactionsPage() {
         return <CreditCard size={16} className="mr-1 text-purple-600" />;
       case "QRIS":
         return <CreditCard size={16} className="mr-1 text-orange-600" />;
+      case "MIDTRANS":
+        return <CreditCard size={16} className="mr-1 text-pink-600" />;
       default:
         return <CreditCard size={16} className="mr-1" />;
     }

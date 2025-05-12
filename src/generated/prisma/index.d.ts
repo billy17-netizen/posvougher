@@ -75,7 +75,8 @@ export type Role = (typeof Role)[keyof typeof Role]
 
 export const PaymentMethod: {
   CASH: 'CASH',
-  QRIS: 'QRIS'
+  QRIS: 'QRIS',
+  MIDTRANS: 'MIDTRANS'
 };
 
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod]
@@ -7743,6 +7744,7 @@ export namespace Prisma {
     paymentMethod: $Enums.PaymentMethod | null
     cashierUserId: string | null
     storeId: string | null
+    midtransToken: string | null
     status: $Enums.TransactionStatus | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -7756,6 +7758,7 @@ export namespace Prisma {
     paymentMethod: $Enums.PaymentMethod | null
     cashierUserId: string | null
     storeId: string | null
+    midtransToken: string | null
     status: $Enums.TransactionStatus | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -7769,6 +7772,7 @@ export namespace Prisma {
     paymentMethod: number
     cashierUserId: number
     storeId: number
+    midtransToken: number
     status: number
     createdAt: number
     updatedAt: number
@@ -7796,6 +7800,7 @@ export namespace Prisma {
     paymentMethod?: true
     cashierUserId?: true
     storeId?: true
+    midtransToken?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -7809,6 +7814,7 @@ export namespace Prisma {
     paymentMethod?: true
     cashierUserId?: true
     storeId?: true
+    midtransToken?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -7822,6 +7828,7 @@ export namespace Prisma {
     paymentMethod?: true
     cashierUserId?: true
     storeId?: true
+    midtransToken?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -7922,6 +7929,7 @@ export namespace Prisma {
     paymentMethod: $Enums.PaymentMethod
     cashierUserId: string
     storeId: string
+    midtransToken: string | null
     status: $Enums.TransactionStatus
     createdAt: Date
     updatedAt: Date
@@ -7954,6 +7962,7 @@ export namespace Prisma {
     paymentMethod?: boolean
     cashierUserId?: boolean
     storeId?: boolean
+    midtransToken?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -7971,6 +7980,7 @@ export namespace Prisma {
     paymentMethod?: boolean
     cashierUserId?: boolean
     storeId?: boolean
+    midtransToken?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -7986,6 +7996,7 @@ export namespace Prisma {
     paymentMethod?: boolean
     cashierUserId?: boolean
     storeId?: boolean
+    midtransToken?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -8001,12 +8012,13 @@ export namespace Prisma {
     paymentMethod?: boolean
     cashierUserId?: boolean
     storeId?: boolean
+    midtransToken?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type TransactionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "totalAmount" | "amountPaid" | "changeAmount" | "paymentMethod" | "cashierUserId" | "storeId" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["transaction"]>
+  export type TransactionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "totalAmount" | "amountPaid" | "changeAmount" | "paymentMethod" | "cashierUserId" | "storeId" | "midtransToken" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["transaction"]>
   export type TransactionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     transactionItems?: boolean | Transaction$transactionItemsArgs<ExtArgs>
     user?: boolean | UserDefaultArgs<ExtArgs>
@@ -8037,6 +8049,7 @@ export namespace Prisma {
       paymentMethod: $Enums.PaymentMethod
       cashierUserId: string
       storeId: string
+      midtransToken: string | null
       status: $Enums.TransactionStatus
       createdAt: Date
       updatedAt: Date
@@ -8473,6 +8486,7 @@ export namespace Prisma {
     readonly paymentMethod: FieldRef<"Transaction", 'PaymentMethod'>
     readonly cashierUserId: FieldRef<"Transaction", 'String'>
     readonly storeId: FieldRef<"Transaction", 'String'>
+    readonly midtransToken: FieldRef<"Transaction", 'String'>
     readonly status: FieldRef<"Transaction", 'TransactionStatus'>
     readonly createdAt: FieldRef<"Transaction", 'DateTime'>
     readonly updatedAt: FieldRef<"Transaction", 'DateTime'>
@@ -12271,6 +12285,7 @@ export namespace Prisma {
     paymentMethod: 'paymentMethod',
     cashierUserId: 'cashierUserId',
     storeId: 'storeId',
+    midtransToken: 'midtransToken',
     status: 'status',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -12856,6 +12871,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodFilter<"Transaction"> | $Enums.PaymentMethod
     cashierUserId?: StringFilter<"Transaction"> | string
     storeId?: StringFilter<"Transaction"> | string
+    midtransToken?: StringNullableFilter<"Transaction"> | string | null
     status?: EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
     createdAt?: DateTimeFilter<"Transaction"> | Date | string
     updatedAt?: DateTimeFilter<"Transaction"> | Date | string
@@ -12872,6 +12888,7 @@ export namespace Prisma {
     paymentMethod?: SortOrder
     cashierUserId?: SortOrder
     storeId?: SortOrder
+    midtransToken?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -12891,6 +12908,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodFilter<"Transaction"> | $Enums.PaymentMethod
     cashierUserId?: StringFilter<"Transaction"> | string
     storeId?: StringFilter<"Transaction"> | string
+    midtransToken?: StringNullableFilter<"Transaction"> | string | null
     status?: EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
     createdAt?: DateTimeFilter<"Transaction"> | Date | string
     updatedAt?: DateTimeFilter<"Transaction"> | Date | string
@@ -12907,6 +12925,7 @@ export namespace Prisma {
     paymentMethod?: SortOrder
     cashierUserId?: SortOrder
     storeId?: SortOrder
+    midtransToken?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -12928,6 +12947,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodWithAggregatesFilter<"Transaction"> | $Enums.PaymentMethod
     cashierUserId?: StringWithAggregatesFilter<"Transaction"> | string
     storeId?: StringWithAggregatesFilter<"Transaction"> | string
+    midtransToken?: StringNullableWithAggregatesFilter<"Transaction"> | string | null
     status?: EnumTransactionStatusWithAggregatesFilter<"Transaction"> | $Enums.TransactionStatus
     createdAt?: DateTimeWithAggregatesFilter<"Transaction"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Transaction"> | Date | string
@@ -13566,6 +13586,7 @@ export namespace Prisma {
     amountPaid?: number
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -13582,6 +13603,7 @@ export namespace Prisma {
     paymentMethod: $Enums.PaymentMethod
     cashierUserId: string
     storeId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -13594,6 +13616,7 @@ export namespace Prisma {
     amountPaid?: IntFieldUpdateOperationsInput | number
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -13610,6 +13633,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     cashierUserId?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -13624,6 +13648,7 @@ export namespace Prisma {
     paymentMethod: $Enums.PaymentMethod
     cashierUserId: string
     storeId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -13635,6 +13660,7 @@ export namespace Prisma {
     amountPaid?: IntFieldUpdateOperationsInput | number
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -13648,6 +13674,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     cashierUserId?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -14371,6 +14398,7 @@ export namespace Prisma {
     paymentMethod?: SortOrder
     cashierUserId?: SortOrder
     storeId?: SortOrder
+    midtransToken?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -14390,6 +14418,7 @@ export namespace Prisma {
     paymentMethod?: SortOrder
     cashierUserId?: SortOrder
     storeId?: SortOrder
+    midtransToken?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -14403,6 +14432,7 @@ export namespace Prisma {
     paymentMethod?: SortOrder
     cashierUserId?: SortOrder
     storeId?: SortOrder
+    midtransToken?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -15550,6 +15580,7 @@ export namespace Prisma {
     amountPaid?: number
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15564,6 +15595,7 @@ export namespace Prisma {
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
     cashierUserId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15758,6 +15790,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodFilter<"Transaction"> | $Enums.PaymentMethod
     cashierUserId?: StringFilter<"Transaction"> | string
     storeId?: StringFilter<"Transaction"> | string
+    midtransToken?: StringNullableFilter<"Transaction"> | string | null
     status?: EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
     createdAt?: DateTimeFilter<"Transaction"> | Date | string
     updatedAt?: DateTimeFilter<"Transaction"> | Date | string
@@ -15855,6 +15888,7 @@ export namespace Prisma {
     amountPaid?: number
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -15869,6 +15903,7 @@ export namespace Prisma {
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
     storeId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -16717,6 +16752,7 @@ export namespace Prisma {
     amountPaid?: number
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -16732,6 +16768,7 @@ export namespace Prisma {
     paymentMethod: $Enums.PaymentMethod
     cashierUserId: string
     storeId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -16790,6 +16827,7 @@ export namespace Prisma {
     amountPaid?: IntFieldUpdateOperationsInput | number
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16805,6 +16843,7 @@ export namespace Prisma {
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     cashierUserId?: StringFieldUpdateOperationsInput | string
     storeId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -16973,6 +17012,7 @@ export namespace Prisma {
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
     cashierUserId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -17089,6 +17129,7 @@ export namespace Prisma {
     amountPaid?: IntFieldUpdateOperationsInput | number
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17103,6 +17144,7 @@ export namespace Prisma {
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     cashierUserId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17116,6 +17158,7 @@ export namespace Prisma {
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     cashierUserId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17200,6 +17243,7 @@ export namespace Prisma {
     changeAmount?: number
     paymentMethod: $Enums.PaymentMethod
     storeId: string
+    midtransToken?: string | null
     status?: $Enums.TransactionStatus
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -17235,6 +17279,7 @@ export namespace Prisma {
     amountPaid?: IntFieldUpdateOperationsInput | number
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17249,6 +17294,7 @@ export namespace Prisma {
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     storeId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -17262,6 +17308,7 @@ export namespace Prisma {
     changeAmount?: IntFieldUpdateOperationsInput | number
     paymentMethod?: EnumPaymentMethodFieldUpdateOperationsInput | $Enums.PaymentMethod
     storeId?: StringFieldUpdateOperationsInput | string
+    midtransToken?: NullableStringFieldUpdateOperationsInput | string | null
     status?: EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string

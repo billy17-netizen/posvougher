@@ -20,8 +20,8 @@ interface TransactionItem {
 interface Transaction {
   id: string;
   totalAmount: number;
-  paymentMethod: "CASH" | "DEBIT" | "CREDIT" | "QRIS";
-  status: "PENDING" | "COMPLETED" | "CANCELLED";
+  paymentMethod: "CASH" | "DEBIT" | "CREDIT" | "QRIS" | "MIDTRANS";
+  status: "PENDING" | "COMPLETED" | "CANCELLED" | "EXPIRED";
   createdAt: string;
   cashierName: string;
   items: TransactionItem[];
@@ -63,9 +63,11 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         'debit': 'Kartu Debit',
         'credit': 'Kartu Kredit',
         'qris': 'QRIS',
+        'midtrans': 'Midtrans',
         'pending': 'Tertunda',
         'completed': 'Selesai',
         'cancelled': 'Dibatalkan',
+        'expired': 'Kadaluarsa',
         'receipt': 'Tanda Terima',
         'print_invoice': 'Cetak Faktur',
         'generate_invoice': 'Buat Faktur'
@@ -87,9 +89,11 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         'debit': 'Debit Card',
         'credit': 'Credit Card',
         'qris': 'QRIS',
+        'midtrans': 'Midtrans',
         'pending': 'Pending',
         'completed': 'Completed',
         'cancelled': 'Cancelled',
+        'expired': 'Expired',
         'receipt': 'Receipt',
         'print_invoice': 'Print Invoice',
         'generate_invoice': 'Generate Invoice'
@@ -109,6 +113,8 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         return t('credit');
       case "QRIS":
         return t('qris');
+      case "MIDTRANS":
+        return t('midtrans');
       default:
         return method;
     }
@@ -122,6 +128,8 @@ const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({
         return t('pending');
       case "CANCELLED":
         return t('cancelled');
+      case "EXPIRED":
+        return t('expired');
       default:
         return status;
     }
